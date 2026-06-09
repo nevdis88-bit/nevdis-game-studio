@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>桜配達ラン</title>
+<style>
+  :root{
+    --ink:#241b2f;
+    --muted:#7d6680;
+    --paper:#fff7ea;
+    --card:rgba(255,255,255,.86);
+    --line:rgba(255,255,255,.62);
+    --shadow:rgba(71,41,78,.20);
+    --pink:#ff6fa5;
+    --pink-2:#ffc0d9;
+    --red:#f04d44;
+    --gold:#ffd45e;
+    --sky:#ffddec;
+    --lav:#a9a5ca;
+    --night:#332b68;
+    --purple:#6f52b8;
+    --green:#78bf84;
+    --road:#d3b184;
+    --btn:#16111f;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
+  html,body{height:100%;overflow:hidden;background:#ff5148;font-family:Inter,-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:var(--ink)}
+  body{display:flex;align-items:center;justify-content:center}
+  button{font:inherit;color:inherit}
+  .phone{
+    position:relative;width:100%;max-width:420px;height:100vh;max-height:900px;overflow:hidden;
+    background:linear-gradient(180deg,#ffe4f0 0%,#fff4e7 52%,#ffe8d4 100%);
+    border:0;border-radius:28px;box-shadow:0 26px 70px rgba(170,40,48,.26);
+  }
+  .screen{position:absolute;inset:0;display:none;overflow:hidden}
+  .screen.active{display:block}
+  .safe{position:absolute;inset:0;padding:18px 16px 22px}
+  .glass{
+    background:var(--card);border:1px solid var(--line);border-radius:18px;
+    box-shadow:0 12px 28px var(--shadow);backdrop-filter:blur(18px);
+  }
+  .pixel{image-rendering:pixelated}
+  .jp-title{font-weight:1000;letter-spacing:.02em;line-height:.92}
+  .micro{font-size:11px;color:var(--muted);font-weight:800;letter-spacing:.04em}
+  .primary{
+    border:0;border-radius:28px;padding:15px 18px;background:linear-gradient(180deg,#292134,#14101d);
+    color:#fff;font-size:17px;font-weight:1000;box-shadow:0 0 24px rgba(22,17,31,.22),0 8px 0 rgba(0,0,0,.22);
+  }
+  .primary:active{transform:translateY(3px);box-shadow:0 0 18px rgba(22,17,31,.18),0 4px 0 rgba(0,0,0,.24)}
+  .secondary{
+    border:1px solid rgba(36,27,47,.12);border-radius:20px;padding:11px 14px;background:rgba(255,255,255,.78);
+    font-size:12px;font-weight:900;color:var(--ink);
+  }
+
+  /* Layer contract:
+     Layer 1: atmosphere and scenery only.
+     Layer 2: player, teammate effect markers, pickups, obstacles, and route objects only.
+     Layer 3: HUD, buttons, modals, reward cards, and text only.
+     Do not duplicate gameplay assets inside background art or UI chrome. */
+
+  /* ---------- HOME ---------- */
+  #home{background:linear-gradient(180deg,#ff5148 0%,#ff5950 45%,#ff6a5c 100%)}
+  .home-bg{position:absolute;inset:0;overflow:hidden}
+  .moon{position:absolute;left:28px;top:88px;width:44px;height:44px;border-radius:50%;background:#ffdf63;box-shadow:16px -4px 0 #ff5148 inset}
+  .star{position:absolute;width:10px;height:10px}
+  .star:before,.star:after{content:"";position:absolute;background:#ffdf63;border-radius:2px}
+  .star:before{left:4px;top:0;width:2px;height:10px}.star:after{left:0;top:4px;width:10px;height:2px}
+  .st1{left:120px;top:84px}.st2{right:52px;top:118px}.st3{left:74px;top:150px}.st4{right:122px;top:74px}
+  .home-nav{position:absolute;left:0;right:0;top:8px;z-index:20}
+  .route-card{
+    position:absolute;left:18px;right:18px;top:66px;bottom:174px;padding:16px 18px 14px;display:flex;flex-direction:column;
+    border:0;border-radius:26px;background:linear-gradient(180deg,#ff5148,#ff6157);
+    box-shadow:0 18px 40px rgba(154,36,48,.24);
+  }
+  .home-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .home-chip{height:34px;padding:0 12px;border:0;border-radius:17px;background:#fff;display:flex;align-items:center;gap:7px;font-size:12px;font-weight:1000;box-shadow:0 5px 0 rgba(120,28,44,.14)}
+  .runner-logo{margin-top:24px;text-align:center;color:#16111f}
+  .store-icon{width:98px;height:72px;margin:0 auto 18px;position:relative;filter:drop-shadow(6px 6px 0 rgba(30,18,34,.16))}
+  .store-icon .roof{position:absolute;left:12px;right:12px;top:0;height:16px;background:#fff;border:0;border-bottom:0}
+  .store-icon .body{position:absolute;left:0;right:0;bottom:0;height:52px;background:#fff;border:0}
+  .store-icon .flag{position:absolute;left:32px;top:-20px;width:34px;height:30px;background:#fff;border:0;font-weight:1000;font-size:18px;color:var(--red);display:grid;place-items:center}
+  .store-icon .door{position:absolute;left:39px;bottom:5px;width:20px;height:32px;background:#81bce4;border:5px solid #2a2440}
+  .title-main{font-size:42px;color:#fff;text-shadow:4px 4px 0 rgba(22,17,31,.72),7px 7px 0 rgba(0,0,0,.08)}
+  .title-sub{margin-top:10px;font-size:16px;font-weight:1000;color:#16111f;letter-spacing:.06em}
+  .team-panel{margin-top:auto;color:#16111f}
+  .panel-label{font-size:15px;font-weight:1000;letter-spacing:.06em;margin:0 0 9px 2px}
+  .buddy-pick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:13px}
+  .buddy-card{
+    height:122px;border:0;border-radius:19px;background:rgba(255,255,255,.58);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;position:relative;padding:8px 6px;text-align:center;box-shadow:0 7px 0 rgba(120,28,44,.16), inset 0 0 0 3px rgba(120,28,44,.24)
+  }
+  .buddy-card.selected{background:#ffdf63}.buddy-card.locked{background:rgba(255,255,255,.36);filter:grayscale(1) saturate(.18);opacity:.42}
+  .buddy-card small{font-size:10px;font-weight:1000;color:#7a3d49;line-height:1.05}
+  .buddy-card b{display:block;font-size:11px;color:#241b2f;line-height:1.05}
+  .buddy-card .sprite{width:58px;height:58px;transform:scale(.92);transform-origin:center;filter:drop-shadow(0 7px 0 rgba(120,28,44,.15))}
+  .aid-ico{width:42px;height:42px;border:0;border-radius:13px;background:var(--aid,#fff);display:grid;place-items:center;position:relative;box-shadow:0 5px 0 rgba(0,0,0,.14)}
+  .aid-ico:before{content:attr(data-mark);font-size:24px;font-weight:1000;line-height:1}
+  .aid-copy{text-align:left}.aid-copy b{display:block;font-size:14px;color:#fff}.aid-copy small{display:block;font-size:11px;color:rgba(255,255,255,.78);font-weight:900;margin-top:3px}
+  .button-structure{
+    position:absolute;left:0;right:0;bottom:6px;width:100%;height:140px;
+    z-index:24;pointer-events:none;overflow:hidden;
+  }
+  .button-img{position:absolute;pointer-events:none;user-select:none}
+  .main-action{
+    position:absolute;left:50%;top:18px;width:218px;height:96px;transform:translateX(-50%);
+    border:0;background:transparent;color:#fff;font-size:25px;font-weight:1000;letter-spacing:.02em;
+    text-shadow:0 3px 0 rgba(84,63,46,.24);pointer-events:auto;
+  }
+  .main-action .button-img{left:0;bottom:0;width:218px;height:96px;object-fit:contain}
+  .main-action span{position:absolute;left:0;right:0;top:31px;z-index:1;display:block;text-align:center}
+  .main-action:active{transform:translate(-50%,3px)}
+  .aux-action{
+    position:absolute;top:18px;width:82px;height:96px;border:0;background:transparent;pointer-events:auto;
+    color:#634c1b;font-size:13px;font-weight:1000;line-height:1.08;text-align:center;
+  }
+  .aux-action.left{left:0}.aux-action.right{right:0}
+  .aux-action .button-img{left:0;bottom:0;width:82px;height:96px;object-fit:contain}
+  .aux-icon{display:none}
+  .aux-action span:last-child{position:absolute;left:0;right:0;bottom:20px;z-index:1;margin:auto;width:58px}
+  .button-info{position:absolute;left:50%;top:121px;width:270px;transform:translateX(-50%);text-align:center;font-size:12px;color:rgba(0,0,0,.5);font-weight:800;line-height:1.3;white-space:nowrap}
+
+  /* ---------- SHARED SPRITES ---------- */
+  .sprite{position:relative;width:58px;height:58px;filter:drop-shadow(0 7px 0 rgba(0,0,0,.12))}
+  .sprite .ear{position:absolute;top:6px;width:16px;height:19px;background:var(--c);border:3px solid #15101c;transform:rotate(45deg)}
+  .sprite .ear.l{left:11px}.sprite .ear.r{right:11px}
+  .sprite .head{position:absolute;left:7px;right:7px;top:13px;height:39px;background:var(--c);border:3px solid #15101c;border-radius:18px 18px 16px 16px}
+  .sprite .face{position:absolute;left:16px;right:16px;top:30px;height:14px;background:#fff5e4;border-radius:50%}
+  .sprite .eye{position:absolute;top:27px;width:4px;height:6px;background:#15101c}.sprite .eye.l{left:22px}.sprite .eye.r{right:22px}
+  .sprite .nose{position:absolute;left:27px;top:36px;width:5px;height:4px;background:#15101c;border-radius:50%}
+  .sprite .cap{position:absolute;left:15px;right:15px;top:8px;height:10px;background:var(--cap,#314b85);border:3px solid #15101c;border-radius:7px 7px 3px 3px;z-index:2}
+  .sprite .body{position:absolute;left:16px;right:16px;top:47px;height:14px;background:var(--vest,#3668aa);border:3px solid #15101c;border-radius:5px}
+  .sprite.cat .ear{border-radius:3px 10px 3px 3px}.sprite.bear .ear{border-radius:50%;transform:none;top:10px}.sprite.bear .ear.l{left:8px}.sprite.bear .ear.r{right:8px}
+  .sprite.tanuki .eye{width:8px;background:#2f2a38}.sprite.raven .head{background:#20202b}.sprite.raven .face{background:#514769}.sprite.raven .cap{background:#7d62c9}
+  .mini .sprite{transform:scale(.86)}
+
+  /* ---------- GAME ---------- */
+  #game{background:#191224}
+  .stage{position:absolute;inset:0;overflow:hidden;background:linear-gradient(180deg,#fecbda 0%,#fee4cb 44%,#ffe4c1 100%)}
+  .stage.night{background:linear-gradient(180deg,#211b55 0%,#4d3d78 42%,#f0a36f 100%)}
+  .parallax{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+  .clouds,.mountains,.trees,.ground{position:absolute;left:0;width:200%;will-change:transform}
+  .clouds{top:58px;height:78px;background:
+    radial-gradient(ellipse at 60px 38px,rgba(255,255,255,.78) 0 28px,transparent 29px),
+    radial-gradient(ellipse at 170px 25px,rgba(255,255,255,.72) 0 36px,transparent 37px),
+    radial-gradient(ellipse at 360px 42px,rgba(255,255,255,.65) 0 34px,transparent 35px),
+    radial-gradient(ellipse at 590px 28px,rgba(255,255,255,.7) 0 40px,transparent 41px);
+  }
+  .mountains{bottom:245px;height:154px;background:
+    linear-gradient(145deg,transparent 0 36%,rgba(116,121,170,.52) 37% 56%,transparent 57%),
+    linear-gradient(35deg,transparent 0 40%,rgba(102,105,158,.42) 41% 64%,transparent 65%);
+    opacity:.86;
+  }
+  .trees{bottom:150px;height:160px;background:
+    radial-gradient(circle at 30px 98px,#ffb7d2 0 33px,transparent 34px),
+    radial-gradient(circle at 96px 74px,#ff8fbd 0 34px,transparent 35px),
+    radial-gradient(circle at 168px 98px,#ffc8dd 0 38px,transparent 39px),
+    radial-gradient(circle at 270px 86px,#ffabd0 0 34px,transparent 35px),
+    linear-gradient(90deg,transparent 0 28px,#72523a 29px 36px,transparent 37px 94px,#72523a 95px 103px,transparent 104px 164px,#72523a 165px 172px,transparent 173px 268px,#72523a 269px 276px,transparent 277px);
+    background-size:360px 160px;
+  }
+  .ground{bottom:0;height:162px;background:
+    linear-gradient(180deg,var(--green) 0 22px,#5ca96d 23px 46px,var(--road) 47px 100%);
+    border-top:4px solid rgba(36,27,47,.12);
+  }
+  .ground:after{content:"";position:absolute;left:0;right:0;top:80px;height:9px;background:repeating-linear-gradient(90deg,#fff 0 34px,transparent 35px 70px);opacity:.74}
+  .game-layer{position:absolute;inset:0;z-index:2}
+  .runner{position:absolute;left:54px;bottom:120px;width:68px;height:78px;z-index:8;transition:height .08s}
+  .runner .sprite{width:58px;height:58px;transform:scale(1.08);transform-origin:bottom center}
+  .runner:after{content:"";position:absolute;left:6px;right:7px;bottom:-9px;height:6px;background:rgba(0,0,0,.18);border-radius:50%;filter:blur(1px)}
+  .runner.duck{height:52px}.runner.duck .sprite{transform:scale(1.08,.72) translateY(24px)}
+  .runner.hurt{animation:hurt .32s steps(2)}
+  @keyframes hurt{50%{filter:brightness(1.35) hue-rotate(120deg)}}
+  .buddy-line{position:absolute;left:26px;bottom:72px;height:42px;display:flex;gap:8px;z-index:9}
+  .buddy-line .sprite{width:34px;height:34px;transform:scale(.55);transform-origin:top left;filter:drop-shadow(0 4px 0 rgba(0,0,0,.15))}
+  .item{position:absolute;z-index:7;will-change:transform,left}
+  .petal-item{width:30px;height:30px;border-radius:70% 20% 70% 20%;background:linear-gradient(135deg,#fff,#ff85b8);border:3px solid rgba(36,27,47,.82);transform:rotate(45deg)}
+  .letter-item{width:42px;height:30px;background:#fff8e9;border:3px solid #16111f;border-radius:5px;box-shadow:0 5px 0 rgba(0,0,0,.12)}
+  .letter-item:before{content:"";position:absolute;left:4px;right:4px;top:4px;height:15px;border-left:3px solid #ff6fa5;border-bottom:3px solid #ff6fa5;transform:skewY(-22deg)}
+  .stone{width:48px;height:36px;background:#8e839a;border:3px solid #16111f;border-radius:16px 18px 12px 12px;box-shadow:inset -8px -6px 0 rgba(0,0,0,.12),0 5px 0 rgba(0,0,0,.14)}
+  .branch{width:64px;height:30px;background:#6f4c36;border:3px solid #16111f;border-radius:16px;box-shadow:inset -9px -5px 0 rgba(0,0,0,.12)}
+  .branch:after{content:"";position:absolute;right:10px;top:-14px;width:22px;height:20px;border-radius:50%;background:#ff9ac3;border:3px solid #16111f}
+  .catbox{width:46px;height:46px;background:#d99d55;border:3px solid #16111f;border-radius:10px;box-shadow:inset -7px -7px 0 rgba(0,0,0,.1),0 5px 0 rgba(0,0,0,.13)}
+  .catbox:before{content:"";position:absolute;left:10px;top:-13px;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:14px solid #d99d55;filter:drop-shadow(0 -3px 0 #16111f)}
+  .magnet-ring{position:absolute;left:-26px;top:-28px;width:132px;height:132px;border:2px dashed rgba(255,255,255,.72);border-radius:50%;display:none;z-index:6}
+  .magnet .magnet-ring{display:block;animation:ring 1s linear infinite}@keyframes ring{to{transform:rotate(360deg)}}
+
+  .hud{position:absolute;top:0;left:0;right:0;z-index:12;padding-top:8px}
+  .game-nav{height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;color:#fff}
+  .nav-left,.nav-right{display:flex;align-items:center;gap:10px}
+  .nav-btn{min-width:32px;height:32px;border:0;border-radius:99px;background:rgba(255,255,255,.15);color:#fff;display:grid;place-items:center;font-size:20px;font-weight:800;line-height:1;backdrop-filter:blur(12px)}
+  .nav-btn.text{padding:0 12px;font-size:14px;font-weight:800}
+  .nav-title{position:absolute;left:96px;right:96px;top:8px;height:52px;display:flex;align-items:center;justify-content:center;pointer-events:none;font-size:14px;font-weight:800;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.2)}
+  .game-status{margin:3px 12px 0;background:rgba(32,25,48,.78);border:1px solid rgba(255,255,255,.16);border-radius:18px;padding:9px 11px;color:#fff;box-shadow:0 8px 22px rgba(36,27,47,.18);backdrop-filter:blur(14px)}
+  .route-progress{min-width:0}
+  .route-progress .row{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:900;letter-spacing:.04em}
+  .bar{height:12px;background:rgba(0,0,0,.38);border:2px solid rgba(255,255,255,.9);border-radius:999px;margin-top:6px;overflow:hidden}
+  .fill{height:100%;width:0;background:linear-gradient(90deg,#ff6fa5,#ffdf63);transition:width .18s}
+  .subhud{margin-top:9px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .subhud .glass{padding:8px 9px;text-align:center;border-radius:14px}.subhud b{display:block;font-size:17px}.subhud span{display:block;font-size:9px;color:var(--muted);font-weight:900;letter-spacing:.05em}
+  .control-hint{position:absolute;left:20px;right:20px;bottom:18px;z-index:10;display:flex;justify-content:space-between;gap:10px;pointer-events:none}
+  .control-hint div{flex:1;text-align:center;border:2px solid rgba(22,17,31,.15);background:rgba(255,255,255,.72);border-radius:18px;padding:9px;font-size:11px;font-weight:1000;color:#4a3d58}
+  .toast{position:absolute;left:50%;top:112px;z-index:20;transform:translateX(-50%);padding:9px 14px;background:#fff;border:3px solid #16111f;border-radius:16px;font-size:12px;font-weight:1000;opacity:0;pointer-events:none;box-shadow:0 7px 0 rgba(0,0,0,.16)}
+  .toast.show{animation:toast .8s}@keyframes toast{0%{opacity:0;transform:translate(-50%,12px)}20%,80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-12px)}}
+
+  /* ---------- RESULT AND MODALS ---------- */
+  #result{background:linear-gradient(180deg,#ffdae9,#fff4e7);overflow-y:auto}
+  .result-wrap{padding:20px 17px 28px}
+  .result-hero{text-align:center;margin:10px 0 14px}.rank{font-size:56px;font-weight:1000;color:#fff;text-shadow:4px 4px 0 #16111f,7px 7px 0 rgba(0,0,0,.12)}
+  .result-title{font-size:22px;font-weight:1000;color:#16111f}.result-note{font-size:12px;color:#765d78;font-weight:800;margin-top:4px}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.stat{padding:12px 8px;text-align:center}.stat b{font-size:22px}.stat span{display:block;font-size:10px;color:var(--muted);font-weight:900;margin-top:3px}
+  .postcard{margin-top:14px;padding:15px 15px 14px;background:#fff8ea;border:3px solid #d7b987;border-radius:14px;box-shadow:0 9px 0 rgba(0,0,0,.08);position:relative}
+  .postcard:after{content:"桜";position:absolute;right:15px;top:15px;width:42px;height:52px;background:#ff6fa5;border:3px solid #fff;outline:2px solid #16111f;color:#fff;display:grid;place-items:center;font-weight:1000}
+  .postcard h3{font-size:14px;margin-bottom:8px}.postcard p{font-size:12px;line-height:1.65;color:#4a3854;padding-right:54px;font-weight:700}
+  .reward-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:14px}.reward{padding:12px;border-radius:16px;background:rgba(255,255,255,.84);border:1px solid rgba(36,27,47,.1)}.reward b{display:block;font-size:13px}.reward span{display:block;margin-top:3px;font-size:11px;color:var(--muted);font-weight:800}
+  .result-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}.result-actions .primary{grid-column:1/3}
+  .overlay{position:absolute;inset:0;background:rgba(20,16,29,.72);z-index:30;display:none;align-items:center;justify-content:center;padding:18px}.overlay.show{display:flex}
+  .modal{width:100%;max-width:360px;padding:18px;border-radius:24px;background:#fff8ec;border:3px solid #16111f;box-shadow:0 16px 0 rgba(0,0,0,.22)}
+  .modal h2{font-size:20px;font-weight:1000;margin-bottom:7px}.modal p{font-size:12px;line-height:1.55;color:#6d5871;font-weight:800;margin-bottom:13px}
+  .prizes{display:grid;gap:9px}.prize{display:grid;grid-template-columns:48px 1fr auto;align-items:center;gap:10px;padding:10px;border-radius:15px;background:#fff;border:1px solid rgba(36,27,47,.12)}.prize .ico{width:48px;height:48px;border-radius:13px;background:#ffe2ee;display:grid;place-items:center;font-size:24px}.prize b{font-size:13px}.prize small{display:block;color:#7d6680;font-size:10px;font-weight:900}.cost{font-weight:1000;color:#e24e80}
+  .close-row{display:flex;gap:9px;margin-top:13px}.close-row button{flex:1}
+  .book-row{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:12px}.book-card{padding:10px;border-radius:16px;background:#fff;border:1px solid rgba(36,27,47,.1);text-align:center}.book-card .sprite{margin:0 auto}.book-card b{display:block;font-size:12px;margin-top:5px}.book-card small{display:block;font-size:10px;color:#7d6680;font-weight:900;margin-top:2px}
+  .share-panel{position:absolute;inset:0;z-index:40;display:none;background:rgba(0,0,0,.5)}
+  .share-panel.show{display:block}
+  .share-guide{position:absolute;left:32px;right:32px;top:250px;background:#fff;border-radius:20px;padding:44px 20px 20px;box-shadow:0 18px 42px rgba(0,0,0,.2)}
+  .share-mascot{position:absolute;left:50%;top:-58px;transform:translateX(-50%);width:112px;height:94px;display:grid;place-items:center}
+  .share-mascot .sprite{transform:scale(1.35);filter:drop-shadow(0 11px 0 rgba(0,0,0,.12))}
+  .share-guide h2{font-size:23px;line-height:1.2;text-align:center;margin-bottom:18px;color:#0f0d15;font-weight:1000}
+  .share-steps{display:grid;gap:12px;margin-bottom:18px}
+  .share-step{display:grid;grid-template-columns:24px 1fr;align-items:start;gap:8px;font-size:14px;line-height:1.35;color:#222;font-weight:650}
+  .share-step i{width:20px;height:20px;border-radius:50%;background:#ffd400;display:grid;place-items:center;font-style:normal;font-size:12px;font-weight:1000;color:#3a2b00;margin-top:1px}
+  .share-code{height:52px;border-radius:14px;background:rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 16px;color:rgba(0,0,0,.65);font-size:14px}
+  .copy-dot{width:36px;height:36px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:17px;color:#161823}
+  .share-sheet{position:absolute;left:0;right:0;bottom:0;height:177px;background:#fff;border-radius:8px 8px 0 0;overflow:hidden}
+  .share-title{height:35px;display:grid;place-items:center;font-size:13px;font-weight:800;color:#161823}
+  .share-close{position:absolute;right:8px;top:6px;width:24px;height:24px;border:0;background:transparent;font-size:22px;line-height:20px;color:#161823}
+  .share-channels{position:absolute;left:0;right:0;bottom:42px;height:84px;display:flex;gap:4px;overflow-x:auto;padding:0 16px}
+  .share-channel{width:64px;height:84px;flex:0 0 64px;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;color:rgba(22,24,35,.75);font-size:11px}
+  .share-icon{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:1000;font-size:20px}
+  .share-homebar{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);width:135px;height:5px;background:#000;border-radius:13px}
+  @media (max-height:720px){
+    .route-card{top:60px;bottom:160px;padding-top:13px}.runner-logo{margin-top:14px}.title-main{font-size:34px}.buddy-card{height:98px}.store-icon{transform:scale(.72);margin-bottom:0}.button-structure{height:132px}.share-guide{top:190px}
+  }
+</style>
+</head>
+<body>
+<div class="phone">
+  <section id="home" class="screen active">
+    <div class="home-bg">
+      <div class="moon"></div><div class="star st1"></div><div class="star st2"></div><div class="star st3"></div><div class="star st4"></div>
+    </div>
+    <div class="game-nav home-nav">
+      <div class="nav-left">
+        <button class="nav-btn" id="homeExitBtn" aria-label="Exit">‹</button>
+      </div>
+      <div class="nav-title">桜配達ラン</div>
+      <div class="nav-right">
+        <button class="nav-btn" id="homeMusicBtn" aria-label="Music">♪</button>
+        <button class="nav-btn text" id="homeMoreBtn">More</button>
+      </div>
+    </div>
+    <div class="route-card">
+      <div class="home-top">
+        <div class="home-chip">🌸 <span id="homePoints">0</span> ポイント</div>
+        <div class="home-chip">📦 <span id="teamMeters">0</span>/3000m</div>
+      </div>
+      <div class="runner-logo">
+        <div class="store-icon"><div class="flag">24</div><div class="roof"></div><div class="body"><div class="door"></div></div></div>
+        <div class="jp-title title-main">桜配達ラン</div>
+        <div class="title-sub">春の便りを届けよう</div>
+      </div>
+
+      <div class="team-panel">
+        <div class="panel-label">配達チーム</div>
+        <div class="buddy-pick" id="buddyPick"></div>
+      </div>
+    </div>
+    <div class="button-structure">
+      <button class="aux-action left" id="adBtn"><img class="button-img" src="assets/generated/button-aux-left-v01.png" alt=""><span class="aux-icon">▶</span><span id="adBtnText">広告<br>+1</span></button>
+      <button class="main-action" id="startBtn"><img class="button-img" src="assets/generated/button-primary-v01.png" alt=""><span>配達</span></button>
+      <button class="aux-action right" id="homePrizeBtn"><img class="button-img" src="assets/generated/button-aux-right-v01.png" alt=""><span class="aux-icon">🎁</span><span>景品<br>一覧</span></button>
+      <div class="button-info" id="buttonInfo">広告 0/3 · 景品まであと3000m</div>
+    </div>
+  </section>
+
+  <section id="game" class="screen">
+    <div class="stage" id="stage">
+      <div class="parallax">
+        <div class="clouds" id="clouds"></div>
+        <div class="mountains" id="mountains"></div>
+        <div class="trees" id="trees"></div>
+        <div class="ground" id="ground"></div>
+      </div>
+      <div class="game-layer" id="gameLayer">
+        <div class="runner" id="runner"></div>
+        <div class="magnet-ring"></div>
+        <div class="buddy-line" id="activeBuddies"></div>
+      </div>
+      <div class="hud">
+        <div class="game-nav">
+          <div class="nav-left">
+            <button class="nav-btn" id="pauseBtn" aria-label="Exit">‹</button>
+          </div>
+          <div class="nav-title">桜配達ラン</div>
+          <div class="nav-right">
+            <button class="nav-btn" id="musicBtn" aria-label="Music">♪</button>
+            <button class="nav-btn" id="ruleBtn" aria-label="Rules">?</button>
+            <button class="nav-btn text" id="moreBtn">More</button>
+          </div>
+        </div>
+        <div class="game-status">
+          <div class="route-progress">
+            <div class="row"><span>ROUTE <span id="routePhase">1</span>/10</span><span><span id="timeText">60s</span> · 🌸 <span id="pointText">0</span></span></div>
+            <div class="bar"><div class="fill" id="routeFill"></div></div>
+          </div>
+        </div>
+        <div class="subhud">
+          <div class="glass"><b id="hpText">♥♥♥</b><span>体力</span></div>
+          <div class="glass"><b id="letterText">0/5</b><span>手紙</span></div>
+          <div class="glass"><b id="comboText">0</b><span>COMBO</span></div>
+        </div>
+      </div>
+      <div class="control-hint"><div>タップでジャンプ</div><div>下スワイプでしゃがむ</div></div>
+    </div>
+  </section>
+
+  <section id="result" class="screen">
+    <div class="result-wrap">
+      <div class="result-hero">
+        <div class="rank" id="rankText">A</div>
+        <div class="result-title" id="resultTitle">配達完了!</div>
+        <div class="result-note" id="resultNote">明日の便りが少し近づきました</div>
+      </div>
+      <div class="stats">
+        <div class="glass stat"><b id="rsDistance">0</b><span>m</span></div>
+        <div class="glass stat"><b id="rsPetals">0</b><span>ポイント</span></div>
+        <div class="glass stat"><b id="rsLetters">0</b><span>手紙</span></div>
+      </div>
+      <div class="postcard">
+        <h3 id="cardFrom">京都の小さな花屋より</h3>
+        <p id="cardBody">今日の桜を届けてくれてありがとう。集めたポイントは、クーポンや限定ステッカーと交換できます。</p>
+      </div>
+      <div class="reward-grid">
+        <div class="reward"><b>交換できる景品</b><span>100pt: 100円相当クーポン</span></div>
+        <div class="reward"><b>チーム配送</b><span id="unlockHint">合計3000mで景品解放</span></div>
+        <div class="reward"><b>友だち能力</b><span>新規=パワー / 既存=ゆっくり走行</span></div>
+        <div class="reward"><b>毎日回訪</b><span>初回クリア報酬 +50pt</span></div>
+      </div>
+      <div class="result-actions">
+        <button class="secondary" id="prizeBtn">景品を見る</button>
+        <button class="secondary" id="bookBtn">絵葉書の冊子</button>
+        <button class="primary" id="againBtn">もう一度走る</button>
+        <button class="secondary" id="homeBtn">ホームへ</button>
+        <button class="secondary" id="shareBtn">既存友だちを呼ぶ</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="toast" id="toast">+10</div>
+
+  <div class="overlay" id="prizeModal">
+    <div class="modal">
+      <h2>交換できる景品</h2>
+      <p>報酬はポイントとして管理します。実際の配布額は予算設定に合わせて調整できます。</p>
+      <div class="prizes">
+        <div class="prize"><div class="ico">🎟</div><div><b>100円相当クーポン</b><small>初回体験向け</small></div><div class="cost">100pt</div></div>
+        <div class="prize"><div class="ico">🍵</div><div><b>季節ドリンク券</b><small>週末限定</small></div><div class="cost">180pt</div></div>
+        <div class="prize"><div class="ico">🏷</div><div><b>限定ステッカー</b><small>収集アイテム</small></div><div class="cost">260pt</div></div>
+        <div class="prize"><div class="ico">🎁</div><div><b>桜ギフト抽選券</b><small>月末抽選</small></div><div class="cost">400pt</div></div>
+      </div>
+      <div class="close-row"><button class="primary" data-close>閉じる</button></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="bookModal">
+    <div class="modal">
+      <h2>絵葉書の冊子</h2>
+      <p>3回配達するたびに次のルートと絵葉書が解放されます。走った距離と集めた便りが、次の一局の楽しみになります。</p>
+      <div class="book-row" id="bookList"></div>
+      <div class="close-row"><button class="primary" data-close>閉じる</button></div>
+    </div>
+  </div>
+
+  <div class="share-panel" id="sharePanel">
+    <div class="share-guide">
+      <div class="share-mascot" id="shareMascot"></div>
+      <h2 id="shareHeadline">あと少しでチーム配送!</h2>
+      <div class="share-steps">
+        <div class="share-step"><i>1</i><span>リンクかコードを友だちに送る</span></div>
+        <div class="share-step"><i>2</i><span>友だちがタスクページで参加する</span></div>
+        <div class="share-step"><i>3</i><span>チーム能力が有効になり、総距離が進む</span></div>
+      </div>
+      <div class="share-code"><span>My Code：9SE77FG93</span><span class="copy-dot">⧉</span></div>
+    </div>
+    <div class="share-sheet">
+      <div class="share-title">Send to</div>
+      <button class="share-close" id="shareClose">×</button>
+      <div class="share-channels">
+        <button class="share-channel" data-share-channel><span class="share-icon" style="background:#25D366">☎</span><span>WhatsApp</span></button>
+        <button class="share-channel" data-share-channel><span class="share-icon" style="background:#5E7CFA">🔗</span><span>Copy link</span></button>
+        <button class="share-channel" data-share-channel><span class="share-icon" style="background:#FE2C55">✈</span><span>Message</span></button>
+        <button class="share-channel" data-share-channel><span class="share-icon" style="background:#1877F2">f</span><span>Facebook</span></button>
+        <button class="share-channel" data-share-channel><span class="share-icon" style="background:#25D366">☎</span><span>WhatsApp status</span></button>
+        <button class="share-channel" data-share-channel><span class="share-icon" style="background:linear-gradient(135deg,#833AB4,#FD1D1D,#FCAF45)">◎</span><span>Instagram</span></button>
+      </div>
+      <div class="share-homebar"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const saveKey = "jp-sakura-runner-v04";
+if(params.has("reset")) localStorage.removeItem(saveKey);
+
+const runnerHero = {id:"shiba", name:"シバ", kind:"shiba", color:"#d88a45", cap:"#31528e", vest:"#e85b50"};
+const teammates = [
+  {id:"self", name:"シバ", mark:"〒", kind:"shiba", color:"#d88a45", cap:"#31528e", vest:"#e85b50", skill:"基本配達係", effect:"基準速度"},
+  {id:"newUser", name:"新規", mark:"力", kind:"bear tanuki", color:"#a26a42", cap:"#31528e", vest:"#e85b50", skill:"パワー", effect:"障害物を2回まで突破"},
+  {id:"oldUser", name:"既存", mark:"遅", kind:"cat", color:"#d8d0bd", cap:"#31528e", vest:"#3569ae", skill:"安定走行", effect:"速度が少し下がる"},
+  {id:"returnUser", name:"休眠", mark:"〒", kind:"cat raven", color:"#4c2f37", cap:"#7b426a", vest:"#8a4d57", skill:"回収上手", effect:"手紙スコア +20"}
+];
+const postcards = [
+  ["京都の小さな花屋より","今日の桜を届けてくれてありがとう。集めたポイントは、クーポンや限定ステッカーと交換できます。"],
+  ["青森のおばあちゃんより","遠くの春がここにも届きました。明日も少しだけ走って、次の便りを運んでください。"],
+  ["鎌倉の海辺より","風が強い日ほど、届いた手紙はうれしいものです。友だちを呼ぶと次の配達が少し楽になります。"],
+  ["札幌の雪どけ道より","桜前線がここまで来るころ、あなたの走った距離もちゃんと物語になります。"]
+];
+
+let state = loadState();
+let game = null;
+let pendingInviteType = null;
+
+function loadState(){
+  const today = new Date().toISOString().slice(0,10);
+  const base = {points:0, plays:5, clearsTowardUnlock:0, totalClears:0, teamMeters:0, hasNewUser:false, hasOldUser:false, hasReturnUser:false, adViews:0, adDay:today, postcardUnlocked:1};
+  try{return {...base, ...JSON.parse(localStorage.getItem(saveKey) || "{}")};}
+  catch(e){return base;}
+}
+function save(){localStorage.setItem(saveKey, JSON.stringify(state));}
+function normalizeDailyAds(){
+  const today = new Date().toISOString().slice(0,10);
+  if(state.adDay !== today){
+    state.adDay = today;
+    state.adViews = 0;
+  }
+}
+function spriteHTML(b, small=false){
+  return `<div class="${small ? "mini " : ""}"><div class="sprite ${b.kind}" style="--c:${b.color};--cap:${b.cap};--vest:${b.vest}">
+    <div class="ear l"></div><div class="ear r"></div><div class="head"></div><div class="cap"></div>
+    <div class="eye l"></div><div class="eye r"></div><div class="face"></div><div class="nose"></div><div class="body"></div>
+  </div></div>`;
+}
+function aidHTML(a, withCopy=false){
+  const ico = `<div class="aid-ico" style="--aid:${a.color}" data-mark="${a.mark}"></div>`;
+  if(!withCopy) return ico;
+  return `${ico}<div class="aid-copy"><b>${a.name}</b><small>${a.effect}</small></div>`;
+}
+function renderHome(){
+  normalizeDailyAds();
+  $("homePoints").textContent = state.points;
+  $("teamMeters").textContent = Math.min(3000, Math.floor(state.teamMeters || 0));
+  const pick = $("buddyPick");
+  pick.innerHTML = "";
+  teammates.forEach((mate, index) => {
+    const joined = index === 0 || (mate.id === "newUser" && state.hasNewUser) || (mate.id === "oldUser" && state.hasOldUser) || (mate.id === "returnUser" && state.hasReturnUser);
+    const card = document.createElement("button");
+    card.className = "buddy-card" + (joined ? " selected" : " locked");
+    card.innerHTML = `${spriteHTML(mate)}<b>${mate.name}</b><small>${joined ? mate.skill : (mate.id === "newUser" ? "招待" : mate.id === "oldUser" ? "呼ぶ" : "召回")}</small>`;
+    if(mate.id !== "self") card.onclick = joined ? () => toastHome(`${mate.name}は参加済み`) : () => openSharePanel(mate.id);
+    pick.appendChild(card);
+  });
+  $("startBtn").querySelector("span").textContent = state.plays > 0 ? "配達" : "不足";
+  $("adBtnText").innerHTML = state.adViews >= 3 ? "本日<br>上限" : "広告<br>+1";
+  $("buttonInfo").textContent = `残り${state.plays}回 · 広告${state.adViews}/3 · 景品${Math.max(0, 3000 - Math.floor(state.teamMeters || 0))}m`;
+}
+function toastHome(text){
+  const t = $("toast");
+  t.textContent = text;
+  t.classList.remove("show");
+  void t.offsetWidth;
+  t.classList.add("show");
+}
+function show(id){
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  $(id).classList.add("active");
+}
+
+$("startBtn").onclick = () => {
+  if(state.plays <= 0){toastHome("プレイ回数が足りません"); return;}
+  state.plays -= 1; save(); startGame();
+};
+$("adBtn").onclick = () => {
+  watchAdForPlay();
+};
+$("homeExitBtn").onclick = () => toastHome("イベントを閉じます");
+$("homeMusicBtn").onclick = () => {
+  $("homeMusicBtn").textContent = $("homeMusicBtn").textContent === "♪" ? "♪̸" : "♪";
+  toastHome($("homeMusicBtn").textContent === "♪" ? "音楽 ON" : "音楽 OFF");
+};
+$("homeMoreBtn").onclick = () => $("prizeModal").classList.add("show");
+$("homePrizeBtn").onclick = () => $("prizeModal").classList.add("show");
+function watchAdForPlay(){
+  normalizeDailyAds();
+  if(state.adViews >= 3){
+    toastHome("本日の広告回数は上限です");
+    return;
+  }
+  state.adViews += 1;
+  state.plays += 1;
+  save(); renderHome();
+  toastHome(`広告視聴完了: +1 (${state.adViews}/3)`);
+}
+function inviteNewUser(){
+  state.hasNewUser = true;
+  save(); renderHome();
+  toastHome("新規友だち参加: パワー +2");
+}
+function inviteOldUser(){
+  state.hasOldUser = true;
+  save(); renderHome();
+  toastHome("既存友だち参加: 速度 -10%");
+}
+function inviteReturnUser(){
+  state.hasReturnUser = true;
+  save(); renderHome();
+  toastHome("休眠友だち参加: 手紙 +20");
+}
+function openSharePanel(type){
+  pendingInviteType = type;
+  const mate = teammates.find(t => t.id === type);
+  $("shareMascot").innerHTML = spriteHTML(mate || runnerHero);
+  $("shareHeadline").textContent = type === "newUser" ? "新しい友だちを招待!" : type === "oldUser" ? "既存友だちを呼ぼう!" : "休眠友だちに送ろう!";
+  $("sharePanel").classList.add("show");
+}
+function closeSharePanel(){
+  $("sharePanel").classList.remove("show");
+  pendingInviteType = null;
+}
+function completeShareInvite(){
+  const type = pendingInviteType;
+  closeSharePanel();
+  if(type === "newUser") inviteNewUser();
+  if(type === "oldUser") inviteOldUser();
+  if(type === "returnUser") inviteReturnUser();
+}
+$("pauseBtn").onclick = () => finish(false, true);
+$("musicBtn").onclick = () => {
+  $("musicBtn").textContent = $("musicBtn").textContent === "♪" ? "♪̸" : "♪";
+  toastHome($("musicBtn").textContent === "♪" ? "音楽 ON" : "音楽 OFF");
+};
+$("ruleBtn").onclick = () => toastHome("タップ=ジャンプ / 下スワイプ=しゃがむ");
+$("moreBtn").onclick = () => $("prizeModal").classList.add("show");
+$("againBtn").onclick = () => {show("home"); renderHome();};
+$("homeBtn").onclick = () => {show("home"); renderHome();};
+$("prizeBtn").onclick = () => $("prizeModal").classList.add("show");
+$("bookBtn").onclick = () => {renderBook(); $("bookModal").classList.add("show");};
+$("shareBtn").onclick = () => {
+  openSharePanel("oldUser");
+};
+$("shareClose").onclick = closeSharePanel;
+$("sharePanel").addEventListener("click", e => { if(e.target === $("sharePanel")) closeSharePanel(); });
+document.querySelectorAll("[data-share-channel]").forEach(btn => btn.onclick = completeShareInvite);
+document.querySelectorAll("[data-close]").forEach(b => b.onclick = () => document.querySelectorAll(".overlay").forEach(o => o.classList.remove("show")));
+document.querySelectorAll(".overlay").forEach(o => o.addEventListener("click", e => {if(e.target === o) o.classList.remove("show");}));
+
+function renderBook(){
+  $("bookList").innerHTML = postcards.map((p, i) => {
+    const need = i === 0 ? 0 : i * 3;
+    const isUnlocked = state.totalClears >= need;
+    return `<div class="book-card" style="${isUnlocked ? "" : "opacity:.45;filter:saturate(.35)"}"><div class="aid-ico" style="--aid:${i % 2 ? "#ffdf63" : "#ff9fc5"}" data-mark="${i + 1}"></div><b>${isUnlocked ? p[0] : need + "回配達で解放"}</b><small>${isUnlocked ? p[1] : "桜前線を進めると届きます"}</small></div>`;
+  }).join("");
+}
+
+function startGame(){
+  $("runner").innerHTML = spriteHTML(runnerHero);
+  const teamMarkers = [];
+  if(state.hasNewUser) teamMarkers.push(teammates[1]);
+  if(state.hasOldUser) teamMarkers.push(teammates[2]);
+  if(state.hasReturnUser) teamMarkers.push(teammates[3]);
+  $("activeBuddies").innerHTML = teamMarkers.map(m => aidHTML(m)).join("");
+  $("stage").classList.remove("night");
+  $("gameLayer").classList.remove("magnet");
+  game = {
+    running:true, start:performance.now(), last:performance.now(), elapsed:0, duration:60,
+    speed:250, spawnMs:960, spawn:0, points:0, letters:0, hp:3,
+    combo:0, maxCombo:0, distance:0, y:0, vy:0, grounded:true, duck:false, duckTimer:0,
+    items:[], invuln:0, shield:state.hasNewUser ? 2 : 0,
+    magnet:false, letterBonus:state.hasReturnUser ? 20 : 0,
+    grace:state.hasNewUser ? 6 : 0,
+    speedMul:state.hasOldUser ? .9 : 1
+  };
+  $("gameLayer").querySelectorAll(".item").forEach(n => n.remove());
+  show("game");
+  updateHUD();
+  requestAnimationFrame(loop);
+}
+
+const stageInput = $("stage");
+let pointerY = null;
+stageInput.addEventListener("pointerdown", e => pointerY = e.clientY);
+stageInput.addEventListener("pointerup", e => {
+  if(!game || !game.running) return;
+  const dy = e.clientY - pointerY;
+  if(dy > 30) duck();
+  else jump();
+});
+function jump(){
+  if(!game.grounded || game.duck) return;
+  game.vy = 840;
+  game.grounded = false;
+}
+function duck(){
+  if(!game.grounded) return;
+  game.duck = true;
+  game.duckTimer = .48;
+  $("runner").classList.add("duck");
+}
+
+function loop(now){
+  if(!game || !game.running) return;
+  const dt = Math.min(.034, (now - game.last) / 1000);
+  game.last = now;
+  game.elapsed = (now - game.start) / 1000;
+  const p = Math.min(1, game.elapsed / game.duration);
+  game.speed = (245 + p * 245) * game.speedMul;
+  game.spawnMs = 1030 - p * 500;
+  if(p > .62) $("stage").classList.add("night");
+
+  game.distance += game.speed * dt * .085;
+  const c = -game.elapsed * game.speed;
+  $("clouds").style.transform = `translateX(${c * .06 % 420}px)`;
+  $("mountains").style.transform = `translateX(${c * .14 % 420}px)`;
+  $("trees").style.transform = `translateX(${c * .36 % 360}px)`;
+  $("ground").style.transform = `translateX(${c * .95 % 420}px)`;
+
+  updateRunner(dt);
+  game.spawn += dt * 1000;
+  if(game.spawn > game.spawnMs){
+    game.spawn = 0;
+    spawnPattern(p);
+  }
+  moveItems(dt);
+  updateHUD();
+  if(game.elapsed >= game.duration) finish(game.hp > 0 && game.letters >= 5, false);
+  else if(game.hp <= 0) finish(false, false);
+  else requestAnimationFrame(loop);
+}
+function updateRunner(dt){
+  if(game.duck){
+    game.duckTimer -= dt;
+    if(game.duckTimer <= 0){
+      game.duck = false;
+      $("runner").classList.remove("duck");
+    }
+  }
+  if(!game.grounded){
+    game.y += game.vy * dt;
+    game.vy -= 2050 * dt;
+    if(game.y <= 0){game.y = 0; game.vy = 0; game.grounded = true;}
+  }
+  $("runner").style.transform = `translateY(${-game.y}px)`;
+  if(game.invuln > 0) game.invuln -= dt;
+}
+function spawnPattern(p){
+  const lane = Math.random();
+  if(Math.random() < .45) spawn("petal", 430, 205 + Math.random() * 90);
+  if(Math.random() < .24 + p * .18) spawn("letter", 500, 175 + Math.random() * 70);
+  if(lane < .45) spawn("stone", 520, 105);
+  else if(lane < .72) spawn("branch", 520, 188);
+  else spawn("catbox", 520, 105);
+  if(p > .5 && Math.random() < .45) setTimeout(() => spawn(Math.random() < .5 ? "stone" : "branch", 520, Math.random() < .5 ? 105 : 188), 380);
+  if(p > .78 && Math.random() < .35) setTimeout(() => spawn("petal", 520, 285), 220);
+}
+function spawn(type, x, y){
+  const el = document.createElement("div");
+  el.className = `item ${type === "petal" ? "petal-item" : type === "letter" ? "letter-item" : type}`;
+  el.style.left = x + "px";
+  el.style.bottom = y + "px";
+  $("gameLayer").appendChild(el);
+  game.items.push({type, el, x, y, hit:false});
+}
+function moveItems(dt){
+  const runner = $("runner").getBoundingClientRect();
+  for(let i = game.items.length - 1; i >= 0; i--){
+    const it = game.items[i];
+    it.x -= game.speed * dt;
+    if(game.magnet && (it.type === "petal" || it.type === "letter") && it.x < 210 && it.x > 20){
+      it.x -= game.speed * dt * .55;
+      const target = it.type === "letter" ? 194 : 205;
+      it.y += (target - it.y) * .05;
+      it.el.style.bottom = it.y + "px";
+    }
+    it.el.style.left = it.x + "px";
+    if(it.x < -90){it.el.remove(); game.items.splice(i,1); continue;}
+    const r = it.el.getBoundingClientRect();
+    const overlap = !(r.right < runner.left + 18 || r.left > runner.right - 14 || r.bottom < runner.top + game.grace || r.top > runner.bottom - game.grace);
+    if(overlap && !it.hit){
+      if(it.type === "petal" || it.type === "letter") collect(it, i);
+      else damage(it, i);
+    }
+  }
+}
+function collect(it, i){
+  it.hit = true;
+  const add = it.type === "letter" ? 45 + game.letterBonus : 10 + Math.min(30, game.combo * 2);
+  game.points += add;
+  game.combo += 1;
+  game.maxCombo = Math.max(game.maxCombo, game.combo);
+  if(it.type === "letter") game.letters += 1;
+  floatText("+" + add + (it.type === "letter" ? " 手紙" : ""));
+  it.el.style.transform = "scale(0) rotate(120deg)";
+  it.el.style.transition = "transform .22s, opacity .22s";
+  it.el.style.opacity = "0";
+  setTimeout(() => it.el.remove(), 230);
+  game.items.splice(i,1);
+}
+function damage(it, i){
+  it.hit = true;
+  if(game.invuln > 0) return;
+  if(game.shield > 0){
+    game.shield -= 1;
+    floatText("お守り!");
+  }else{
+    game.hp -= 1;
+    game.combo = 0;
+    $("runner").classList.add("hurt");
+    setTimeout(() => $("runner").classList.remove("hurt"), 340);
+    floatText("-1 体力");
+  }
+  game.invuln = 1;
+  it.el.remove();
+  game.items.splice(i,1);
+}
+function floatText(text){
+  const t = $("toast");
+  t.textContent = text;
+  t.classList.remove("show");
+  void t.offsetWidth;
+  t.classList.add("show");
+}
+function updateHUD(){
+  if(!game) return;
+  const remain = Math.max(0, Math.ceil(game.duration - game.elapsed));
+  const p = Math.min(100, game.elapsed / game.duration * 100);
+  $("routePhase").textContent = Math.min(10, Math.max(1, Math.ceil(p / 10)));
+  $("routeFill").style.width = p + "%";
+  $("timeText").textContent = remain + "s";
+  $("pointText").textContent = game.points;
+  $("hpText").textContent = "♥".repeat(Math.min(4, game.hp)) + "♡".repeat(Math.max(0, 4 - game.hp));
+  $("letterText").textContent = game.letters + "/5";
+  $("comboText").textContent = game.combo;
+}
+function finish(win, paused){
+  if(!game || !game.running) return;
+  game.running = false;
+  const gain = Math.max(0, Math.floor(game.points + game.letters * 20 + game.distance / 4));
+  if(paused){
+    show("home"); renderHome(); return;
+  }
+  state.points += gain;
+  state.teamMeters = Math.min(3000, (state.teamMeters || 0) + Math.floor(game.distance));
+  let unlockedNow = null;
+  if(win){
+    state.clearsTowardUnlock += 1;
+    state.totalClears += 1;
+    state.postcardUnlocked = Math.max(state.postcardUnlocked || 1, Math.min(postcards.length, Math.floor(state.totalClears / 3) + 1));
+    if(state.clearsTowardUnlock >= 3){
+      state.clearsTowardUnlock = 0;
+      unlockedNow = postcards[Math.min(postcards.length - 1, state.postcardUnlocked - 1)];
+    }
+  }
+  save();
+  const rank = !win ? "C" : game.letters >= 7 && game.hp >= 3 ? "S" : game.letters >= 5 ? "A" : "B";
+  $("rankText").textContent = rank;
+  $("resultTitle").textContent = win ? "配達完了!" : "配達失敗";
+  const teamDone = state.teamMeters >= 3000;
+  $("resultNote").textContent = teamDone ? "チーム配送達成! 景品が解放されました" : (win ? "チームの配送距離が進みました" : "手紙5通を届けるとクリアです");
+  $("rsDistance").textContent = Math.floor(game.distance);
+  $("rsPetals").textContent = gain;
+  $("rsLetters").textContent = game.letters;
+  const card = postcards[Math.min(postcards.length - 1, Math.floor(Math.random() * postcards.length))];
+  $("cardFrom").textContent = card[0];
+  $("cardBody").textContent = unlockedNow ? `${unlockedNow[0]}の絵葉書が届きました。次の一局では新しいルートの景色と報酬を目指せます。` : card[1];
+  const nextIndex = Math.min(postcards.length - 1, Math.floor(state.totalClears / 3) + 1);
+  $("unlockHint").textContent = teamDone ? "3000m達成: 景品交換OK" : `あと${3000 - Math.floor(state.teamMeters)}mでチーム景品`;
+  show("result");
+}
+
+renderHome();
+</script>
+</body>
+</html>

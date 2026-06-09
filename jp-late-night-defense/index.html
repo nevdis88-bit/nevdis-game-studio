@@ -1,0 +1,1503 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JP Late-night Defense v0.5</title>
+    <style>
+      :root {
+        --red: #ff3b32;
+        --red-dark: #d92924;
+        --yellow: #ffd21f;
+        --yellow-soft: #ffe873;
+        --lavender: #a9aec5;
+        --cream: #fff6dc;
+        --ink: #17121a;
+        --white: #fffaf1;
+        --green: #4edb83;
+        --blue: #50a8ff;
+        --pink: #ff7bb3;
+        --shadow: 5px 5px 0 var(--ink);
+        font-family: "Courier New", ui-monospace, Menlo, monospace;
+      }
+
+      /*
+        Layer contract:
+        - visual asset layer: generated bitmap backgrounds and sprites only
+        - gameplay layer: moving customer/staff sprites only
+        - UI layer: HUD, progress, buttons, modals only
+        Do not duplicate shelves, counters, customers, staff, or products across layers.
+      */
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background:
+          linear-gradient(135deg, transparent 0 54%, rgba(0, 0, 0, 0.18) 54% 58%, transparent 58%),
+          #efeff2;
+        color: var(--ink);
+      }
+
+      button {
+        border: 0;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+      }
+
+      .phone {
+        position: relative;
+        width: min(100vw, 430px);
+        height: min(100vh, 860px);
+        min-height: 720px;
+        overflow: hidden;
+        border: 6px solid var(--white);
+        border-radius: 34px;
+        background: var(--red);
+        box-shadow: 0 24px 80px rgba(20, 16, 30, 0.36);
+      }
+
+      img {
+        image-rendering: pixelated;
+        user-select: none;
+        -webkit-user-drag: none;
+      }
+
+      .screen {
+        position: absolute;
+        inset: 0;
+        display: none;
+        overflow: hidden;
+      }
+
+      .screen.active {
+        display: block;
+      }
+
+      .pixel-title {
+        margin: 0;
+        font-size: 30px;
+        line-height: 0.95;
+        font-weight: 1000;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .tiny {
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 0;
+      }
+
+      .panel {
+        border: 4px solid var(--ink);
+        background: var(--white);
+        box-shadow: var(--shadow);
+      }
+
+      .yellow-btn,
+      .white-btn,
+      .red-btn,
+      .icon-btn,
+      .staff-card,
+      .item-btn,
+      .skill-btn,
+      .prize-card {
+        border: 4px solid var(--ink);
+        box-shadow: 4px 4px 0 var(--ink);
+        font-weight: 1000;
+      }
+
+      .yellow-btn {
+        background: var(--yellow);
+      }
+
+      .white-btn {
+        background: var(--white);
+      }
+
+      .red-btn {
+        background: var(--red);
+        color: var(--white);
+      }
+
+      .yellow-btn:active,
+      .white-btn:active,
+      .red-btn:active,
+      .icon-btn:active,
+      .item-btn:active,
+      .skill-btn:active,
+      .staff-card:active,
+      .prize-card:active {
+        transform: translate(3px, 3px);
+        box-shadow: 1px 1px 0 var(--ink);
+      }
+
+      .home-wrap {
+        position: absolute;
+        inset: 40px 28px 28px;
+        display: grid;
+        grid-template-rows: auto auto 1fr auto auto;
+        justify-items: center;
+        gap: 18px;
+        text-align: center;
+      }
+
+      .logo-block {
+        width: 138px;
+        height: 118px;
+        display: grid;
+        place-items: center;
+        border: 5px solid var(--ink);
+        background: var(--yellow);
+        box-shadow: var(--shadow);
+      }
+
+      .logo-block b {
+        font-size: 34px;
+        line-height: 0.95;
+      }
+
+      .home-copy {
+        display: grid;
+        gap: 6px;
+        color: var(--ink);
+      }
+
+      .home-copy h1 {
+        margin: 0;
+        font-size: 17px;
+        line-height: 1.1;
+        font-weight: 1000;
+      }
+
+      .home-copy p {
+        margin: 0;
+        font-size: 11px;
+        font-weight: 900;
+      }
+
+      .home-staff {
+        align-self: center;
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        align-items: end;
+      }
+
+      .staff-slot {
+        min-height: 132px;
+        display: grid;
+        place-items: center;
+        gap: 5px;
+      }
+
+      .sprite {
+        width: 76px;
+        height: 76px;
+        display: grid;
+        place-items: center;
+        font-size: 44px;
+        border: 4px solid var(--ink);
+        background: var(--lavender);
+        box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.2);
+        image-rendering: pixelated;
+      }
+
+      .sprite img,
+      .keeper img,
+      .customer > img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        image-rendering: pixelated;
+      }
+
+      .sprite.small {
+        width: 52px;
+        height: 52px;
+        font-size: 31px;
+        border-width: 3px;
+      }
+
+      .home-meta {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+
+      .metric {
+        padding: 7px 5px;
+        border: 3px solid var(--ink);
+        background: rgba(255, 255, 255, 0.72);
+        font-size: 10px;
+        font-weight: 1000;
+      }
+
+      .metric b {
+        display: block;
+        margin-top: 3px;
+        font-size: 15px;
+      }
+
+      .home-actions {
+        width: 100%;
+        display: grid;
+        gap: 8px;
+      }
+
+      .home-actions button {
+        min-height: 52px;
+      }
+
+      .game-bg {
+        position: absolute;
+        inset: 0;
+        background: url("assets/generated/jp-defense-v05/gameplay-screen.png") center / 100% 100% no-repeat;
+      }
+
+      #homeScreen {
+        background:
+          radial-gradient(circle at 22% 14%, var(--yellow) 0 14px, transparent 15px),
+          radial-gradient(circle at 76% 18%, var(--yellow) 0 4px, transparent 5px),
+          radial-gradient(circle at 84% 34%, var(--yellow) 0 4px, transparent 5px),
+          linear-gradient(180deg, var(--red), var(--red-dark));
+      }
+
+      .hud {
+        position: absolute;
+        top: 12px;
+        left: 14px;
+        right: 14px;
+        z-index: 30;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 7px;
+        min-height: 46px;
+        padding: 7px;
+        border: 4px solid var(--ink);
+        background: rgba(14, 16, 32, 0.92);
+        color: var(--white);
+        box-shadow: 4px 4px 0 var(--ink);
+      }
+
+      .hud .bar {
+        height: 16px;
+        border: 3px solid var(--ink);
+        background: #3e2587;
+        overflow: hidden;
+      }
+
+      .hud .bar i {
+        display: block;
+        width: 100%;
+        height: 100%;
+        transform-origin: left;
+        background: var(--yellow);
+      }
+
+      .biz-strip {
+        position: absolute;
+        top: 68px;
+        left: 16px;
+        right: 16px;
+        z-index: 28;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        align-items: center;
+        padding: 8px;
+        border: 3px solid var(--ink);
+        background: var(--white);
+        box-shadow: 4px 4px 0 var(--ink);
+        font-size: 10px;
+        font-weight: 1000;
+      }
+
+      .lane {
+        position: absolute;
+        top: 128px;
+        left: 96px;
+        right: 96px;
+        bottom: 248px;
+        z-index: 12;
+      }
+
+      .danger-line {
+        position: absolute;
+        left: 94px;
+        right: 94px;
+        bottom: 250px;
+        z-index: 16;
+        height: 10px;
+        border: 3px solid var(--ink);
+        background: repeating-linear-gradient(90deg, var(--red) 0 14px, var(--white) 14px 26px);
+      }
+
+      .customer {
+        position: absolute;
+        width: 62px;
+        height: 78px;
+        display: grid;
+        place-items: center;
+        font-size: 0;
+        filter: drop-shadow(4px 4px 0 rgba(0, 0, 0, 0.22));
+      }
+
+      .customer.hit {
+        animation: pop 0.38s ease forwards;
+      }
+
+      .customer.slow {
+        filter: drop-shadow(0 0 8px #63d7ff) saturate(0.8);
+      }
+
+      @keyframes pop {
+        to {
+          transform: translateY(-24px) scale(0.2) rotate(12deg);
+          opacity: 0;
+        }
+      }
+
+      .wish {
+        position: absolute;
+        top: -23px;
+        left: 9px;
+        width: 44px;
+        height: 34px;
+        display: grid;
+        place-items: center;
+        border: 3px solid var(--ink);
+        background: var(--white);
+        font-size: 22px;
+      }
+
+      .wish img {
+        width: 28px;
+        height: 28px;
+        object-fit: contain;
+      }
+
+      .patience {
+        position: absolute;
+        left: 4px;
+        right: 4px;
+        bottom: -5px;
+        height: 8px;
+        border: 2px solid var(--ink);
+        background: var(--ink);
+      }
+
+      .patience i {
+        display: block;
+        height: 100%;
+        transform-origin: left;
+        background: var(--green);
+      }
+
+      .keeper-row {
+        position: absolute;
+        left: 74px;
+        right: 74px;
+        bottom: 146px;
+        z-index: 20;
+        min-height: 92px;
+        display: flex;
+        justify-content: center;
+        align-items: end;
+        gap: 8px;
+        pointer-events: none;
+      }
+
+      .keeper {
+        position: relative;
+        z-index: 2;
+        width: 62px;
+        height: 62px;
+        display: grid;
+        place-items: center;
+        border: 4px solid var(--ink);
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+        font-size: 0;
+      }
+
+      .keeper.power {
+        animation: power 0.34s steps(2) infinite;
+      }
+
+      @keyframes power {
+        50% {
+          transform: translateY(-5px) scale(1.08);
+        }
+      }
+
+      .game-controls {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 14px;
+        z-index: 32;
+        display: grid;
+        gap: 7px;
+      }
+
+      .skills {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 7px;
+      }
+
+      .skill-btn {
+        min-height: 40px;
+        background: var(--yellow);
+        font-size: 10px;
+      }
+
+      .skill-btn img {
+        width: 22px;
+        height: 22px;
+        object-fit: contain;
+        vertical-align: middle;
+      }
+
+      .skill-btn:disabled {
+        opacity: 0.45;
+      }
+
+      .items {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 7px;
+      }
+
+      .item-btn {
+        position: relative;
+        height: 54px;
+        background: var(--white);
+        font-size: 0;
+      }
+
+      .item-btn img {
+        width: 42px;
+        height: 42px;
+        object-fit: contain;
+      }
+
+      .cooldown {
+        position: absolute;
+        inset: 0;
+        background: rgba(20, 18, 26, 0.55);
+        transform: scaleY(0);
+        transform-origin: bottom;
+        pointer-events: none;
+      }
+
+      .projectile {
+        position: absolute;
+        z-index: 40;
+        width: 32px;
+        height: 32px;
+        display: grid;
+        place-items: center;
+        font-size: 0;
+        pointer-events: none;
+      }
+
+      .projectile img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+
+      .float {
+        position: absolute;
+        z-index: 60;
+        color: var(--white);
+        font-weight: 1000;
+        text-shadow: 3px 3px 0 var(--ink);
+        pointer-events: none;
+        animation: float 0.78s ease forwards;
+      }
+
+      @keyframes float {
+        to {
+          transform: translateY(-44px) scale(1.12);
+          opacity: 0;
+        }
+      }
+
+      .overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 70;
+        display: grid;
+        place-items: center;
+        padding: 18px;
+        background: rgba(23, 18, 26, 0.45);
+      }
+
+      .modal {
+        width: 100%;
+        max-height: calc(100vh - 44px);
+        overflow: auto;
+        padding: 16px;
+        border: 5px solid var(--ink);
+        background: var(--red);
+        box-shadow: var(--shadow);
+      }
+
+      .modal.yellow {
+        background: var(--yellow);
+      }
+
+      .modal.white {
+        background: var(--white);
+      }
+
+      .modal h2 {
+        margin: 0 0 8px;
+        font-size: 24px;
+        line-height: 1;
+        font-weight: 1000;
+      }
+
+      .modal p {
+        margin: 0 0 12px;
+        font-size: 11px;
+        font-weight: 900;
+        line-height: 1.35;
+      }
+
+      .staff-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+
+      .staff-card {
+        position: relative;
+        min-height: 128px;
+        padding: 10px;
+        background: var(--lavender);
+        text-align: left;
+      }
+
+      .staff-card.selected {
+        background: var(--yellow);
+      }
+
+      .staff-card.locked {
+        opacity: 0.62;
+        filter: grayscale(1);
+      }
+
+      .staff-card .face {
+        width: 58px;
+        height: 58px;
+        display: grid;
+        place-items: center;
+      }
+
+      .staff-card .face img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+
+      .staff-card b {
+        display: block;
+        margin-top: 2px;
+        font-size: 12px;
+      }
+
+      .staff-card small {
+        display: block;
+        margin-top: 4px;
+        font-size: 10px;
+        font-weight: 900;
+      }
+
+      .check {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 26px;
+        height: 26px;
+        display: grid;
+        place-items: center;
+        border: 3px solid var(--ink);
+        background: var(--white);
+        font-size: 12px;
+        font-weight: 1000;
+      }
+
+      .prize-list {
+        display: grid;
+        gap: 9px;
+      }
+
+      .prize-card {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 9px;
+        align-items: center;
+        min-height: 68px;
+        padding: 8px;
+        background: var(--white);
+      }
+
+      .prize-card .icon {
+        width: 42px;
+        height: 42px;
+        display: grid;
+        place-items: center;
+        border: 3px solid var(--ink);
+        background: var(--yellow);
+        font-size: 0;
+      }
+
+      .prize-card .icon img {
+        width: 36px;
+        height: 36px;
+        object-fit: contain;
+      }
+
+      .prize-card b {
+        display: block;
+        font-size: 12px;
+      }
+
+      .prize-card small {
+        display: block;
+        font-size: 10px;
+        font-weight: 900;
+      }
+
+      .result-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin: 12px 0;
+      }
+
+      .stat {
+        padding: 8px 4px;
+        border: 3px solid var(--ink);
+        background: var(--white);
+        text-align: center;
+      }
+
+      .stat small {
+        display: block;
+        font-size: 9px;
+        font-weight: 900;
+      }
+
+      .stat b {
+        display: block;
+        font-size: 19px;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 9px;
+        margin-top: 10px;
+      }
+
+      .toast {
+        position: absolute;
+        left: 50%;
+        bottom: 106px;
+        z-index: 100;
+        width: max-content;
+        max-width: 310px;
+        padding: 8px 10px;
+        border: 4px solid var(--ink);
+        background: var(--yellow);
+        box-shadow: var(--shadow);
+        font-size: 11px;
+        font-weight: 1000;
+        text-align: center;
+        transform: translateX(-50%);
+        animation: toast 1.25s ease forwards;
+      }
+
+      @keyframes toast {
+        0%,
+        100% {
+          opacity: 0;
+          transform: translate(-50%, 12px);
+        }
+        12%,
+        82% {
+          opacity: 1;
+          transform: translate(-50%, 0);
+        }
+      }
+
+      .shake {
+        animation: shake 0.25s linear;
+      }
+
+      @keyframes shake {
+        25% {
+          transform: translateX(4px);
+        }
+        50% {
+          transform: translateX(-5px);
+        }
+        75% {
+          transform: translateX(3px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="phone" id="phone">
+      <section class="screen active" id="homeScreen">
+        <div class="home-wrap">
+          <div class="logo-block"><b>PIXEL<br />MART</b></div>
+          <div class="home-copy">
+            <h1>CHOOSE YOUR STAFF</h1>
+            <p>WIN 3 ROUNDS TO UNLOCK A NEW STAFF</p>
+          </div>
+          <div class="home-staff" id="homeStaffPreview"></div>
+          <div class="home-meta">
+            <div class="metric">PLAY<b id="homePlays">3</b></div>
+            <div class="metric">WINS<b id="homeWins">0/3</b></div>
+            <div class="metric">COINS<b id="homeCoins">0</b></div>
+          </div>
+          <div class="home-actions">
+            <button class="yellow-btn" id="chooseStaffBtn">SELECT STAFF</button>
+            <div class="row" style="margin:0">
+              <button class="white-btn" id="openPrizesHome">PRIZES</button>
+              <button class="white-btn" id="invitePlayHome">+ PLAY</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="staffScreen">
+        <div class="overlay">
+          <div class="modal yellow">
+            <h2>SELECT STAFF</h2>
+            <p id="staffSelectHint">Choose 1 staff. More slots unlock as you collect staff.</p>
+            <div class="staff-grid" id="staffGrid"></div>
+            <div class="row">
+              <button class="white-btn" id="backHomeFromStaff">BACK</button>
+              <button class="red-btn" id="confirmStaffStart">START</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="gameScreen">
+        <div class="game-bg"></div>
+        <div class="hud">
+          <div class="tiny" id="roundText">R1/10</div>
+          <div class="bar"><i id="timeBar"></i></div>
+          <div class="tiny">🪙 <span id="coinText">0</span></div>
+        </div>
+        <div class="biz-strip">
+          <span id="bizText">PRIZE 0/800 · WINS 0/3</span>
+          <span id="hpText">♥♥♥</span>
+        </div>
+        <div class="lane" id="lane"></div>
+        <div class="danger-line"></div>
+        <div class="keeper-row" id="keeperRow"></div>
+        <div class="game-controls">
+          <div class="skills" id="skillButtons"></div>
+          <div class="items" id="itemButtons"></div>
+        </div>
+      </section>
+
+      <section class="screen" id="resultScreen">
+        <div class="overlay">
+          <div class="modal white">
+            <h2 id="resultTitle">ROUND CLEAR</h2>
+            <p id="resultCopy">Coins stay even if the counter falls.</p>
+            <div class="result-stats">
+              <div class="stat"><small>COINS</small><b id="finalCoins">0</b></div>
+              <div class="stat"><small>ORDERS</small><b id="finalOrders">0/10</b></div>
+              <div class="stat"><small>WINS</small><b id="finalWins">0/3</b></div>
+            </div>
+            <div class="prize-list" id="resultPrizes"></div>
+            <div id="unlockNote" style="margin-top:10px;font-size:11px;font-weight:1000"></div>
+            <div class="row">
+              <button class="yellow-btn" id="againBtn">STAFF & PLAY</button>
+              <button class="white-btn" id="openPrizesResult">PRIZES</button>
+            </div>
+            <div class="row">
+              <button class="white-btn" id="invitePlayResult">INVITE +PLAY</button>
+              <button class="white-btn" id="assistBtn">STAFF ASSIST</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="prizeScreen">
+        <div class="overlay">
+          <div class="modal yellow">
+            <h2>PRIZE SHOP</h2>
+            <p>Use activity coins from rounds. Redemption is a demo placeholder.</p>
+            <div class="prize-list" id="prizeList"></div>
+            <div class="row">
+              <button class="white-btn" id="closePrizes">BACK</button>
+              <button class="red-btn" id="invitePlayPrize">INVITE +PLAY</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="unlockScreen">
+        <div class="overlay">
+          <div class="modal yellow">
+            <h2>NEW STAFF!</h2>
+            <div style="display:grid;place-items:center;padding:18px 0">
+              <div class="sprite" id="unlockSprite">🐰</div>
+            </div>
+            <p id="unlockText">A new staff joined your mart.</p>
+            <button class="red-btn" id="unlockContinue" style="width:100%;min-height:52px">SELECT STAFF</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const TOTAL_TIME = 60;
+      const TARGET_ORDERS = 18;
+      const WIN_UNLOCK_STEP = 3;
+      const saveKey = "jp-defense-v05";
+      const assetBase = "assets/generated/jp-defense-v05/";
+
+      const staff = [
+        { id: "shiba", img: "staff-shiba.png", name: "SHIBA", skill: "rush", desc: "FAST ITEMS", unlockIndex: 0 },
+        { id: "cat", img: "staff-cat.png", name: "CAT", skill: "slow", desc: "SLOW FALL", unlockIndex: 1 },
+        { id: "bear", img: "staff-bear.png", name: "BEAR", skill: "double", desc: "2X COINS", unlockIndex: 2 },
+        { id: "blackcat", img: "staff-blackcat.png", name: "NINJA", skill: "shield", desc: "+1 HEART", unlockIndex: 3 },
+      ];
+
+      const items = [
+        { id: "water", img: "product-water.png", cooldown: 500 },
+        { id: "onigiri", img: "product-onigiri.png", cooldown: 610 },
+        { id: "noodle", img: "product-noodle.png", cooldown: 760 },
+        { id: "choco", img: "product-choco.png", cooldown: 650 },
+        { id: "snack", img: "product-snack.png", cooldown: 860 },
+      ];
+
+      const prizes = [
+        { id: "ticket", img: "reward-ticket.png", name: "50Y TASK COUPON", cost: 800 },
+        { id: "box", img: "reward-box.png", name: "SUPPLY BOX", cost: 500 },
+        { id: "sticker", img: "reward-sticker.png", name: "PIXEL STICKER", cost: 300 },
+        { id: "token", img: "reward-token.png", name: "BONUS PLAY TOKEN", cost: 1500 },
+      ];
+
+      const customers = [
+        { id: "squirrel", img: "customer-squirrel.png" },
+        { id: "rabbit", img: "customer-rabbit.png" },
+        { id: "penguin", img: "customer-penguin.png" },
+        { id: "duck", img: "customer-duck.png" },
+      ];
+
+      const state = loadState();
+      const game = {
+        running: false,
+        startAt: 0,
+        lastAt: 0,
+        nextSpawnAt: 0,
+        nextBeatAt: 0,
+        coins: 0,
+        orders: 0,
+        hp: 3,
+        combo: 0,
+        guests: [],
+        cooldowns: new Map(),
+        usedSkills: new Set(),
+        rushUntil: 0,
+        slowUntil: 0,
+        doubleUntil: 0,
+        soundOn: true,
+        raf: null,
+      };
+
+      const $ = (selector) => document.querySelector(selector);
+      const phone = $("#phone");
+      const lane = $("#lane");
+      const screens = {
+        home: $("#homeScreen"),
+        staff: $("#staffScreen"),
+        game: $("#gameScreen"),
+        result: $("#resultScreen"),
+        prize: $("#prizeScreen"),
+        unlock: $("#unlockScreen"),
+      };
+      let audioCtx = null;
+      let lastScreen = "home";
+
+      normalizeState();
+
+      function asset(name, alt = "") {
+        return `<img src="${assetBase}${name}" alt="${alt}" />`;
+      }
+
+      function normalizeState() {
+        const validIds = new Set(staff.map((person) => person.id));
+        state.unlocked = state.unlocked.filter((id) => validIds.has(id));
+        if (!state.unlocked.includes("shiba")) state.unlocked.unshift("shiba");
+        state.selected = state.selected.filter((id) => state.unlocked.includes(id));
+        if (!state.selected.length) state.selected = ["shiba"];
+        state.selected = state.selected.slice(0, slotLimit());
+        saveState();
+      }
+
+      function loadState() {
+        try {
+          if (new URLSearchParams(window.location.search).has("reset")) {
+            localStorage.removeItem(saveKey);
+          }
+          const saved = JSON.parse(localStorage.getItem(saveKey));
+          return {
+            plays: 3,
+            totalCoins: 0,
+            winsTowardUnlock: 0,
+            unlocked: ["shiba"],
+            selected: ["shiba"],
+            ...saved,
+          };
+        } catch {
+          return { plays: 3, totalCoins: 0, winsTowardUnlock: 0, unlocked: ["shiba"], selected: ["shiba"] };
+        }
+      }
+
+      function saveState() {
+        localStorage.setItem(saveKey, JSON.stringify(state));
+      }
+
+      function show(name) {
+        Object.values(screens).forEach((screen) => screen.classList.remove("active"));
+        screens[name].classList.add("active");
+      }
+
+      function slotLimit() {
+        if (state.unlocked.length >= 4) return 3;
+        if (state.unlocked.length >= 2) return 2;
+        return 1;
+      }
+
+      function selectedStaff() {
+        return state.selected.map((id) => staff.find((person) => person.id === id)).filter(Boolean);
+      }
+
+      function updateHome() {
+        $("#homePlays").textContent = state.plays;
+        $("#homeWins").textContent = `${state.winsTowardUnlock}/${WIN_UNLOCK_STEP}`;
+        $("#homeCoins").textContent = state.totalCoins;
+        const wrap = $("#homeStaffPreview");
+        wrap.innerHTML = "";
+        const selected = selectedStaff();
+        for (let i = 0; i < 3; i += 1) {
+          const person = selected[i];
+          const slot = document.createElement("div");
+          slot.className = "staff-slot";
+          slot.innerHTML = person
+            ? `<div class="sprite">${asset(person.img, person.name)}</div><div class="tiny">${person.name}</div>`
+            : `<div class="sprite" style="opacity:.35">?</div><div class="tiny">LOCK</div>`;
+          wrap.appendChild(slot);
+        }
+      }
+
+      function renderStaffGrid() {
+        $("#staffSelectHint").textContent = `Choose 1-${slotLimit()} staff. Selected ${state.selected.length}/${slotLimit()}.`;
+        const grid = $("#staffGrid");
+        grid.innerHTML = "";
+        staff.forEach((person) => {
+          const unlocked = state.unlocked.includes(person.id);
+          const selected = state.selected.includes(person.id);
+          const card = document.createElement("button");
+          card.className = `staff-card ${selected ? "selected" : ""} ${unlocked ? "" : "locked"}`;
+          card.innerHTML = `
+            <div class="check">${selected ? "OK" : ""}</div>
+            <div class="face">${unlocked ? asset(person.img, person.name) : "?"}</div>
+            <b>${person.name}</b>
+            <small>${person.desc}</small>
+            <small>${unlocked ? "OWNED" : `WIN ${person.unlockIndex * WIN_UNLOCK_STEP} ROUNDS`}</small>
+          `;
+          card.addEventListener("click", () => toggleStaff(person.id));
+          grid.appendChild(card);
+        });
+      }
+
+      function toggleStaff(id) {
+        if (!state.unlocked.includes(id)) {
+          const person = staff.find((entry) => entry.id === id);
+          toast(`${person.name} is locked`);
+          return;
+        }
+        if (state.selected.includes(id)) {
+          if (state.selected.length === 1) {
+            toast("Choose at least 1 staff");
+            return;
+          }
+          state.selected = state.selected.filter((entry) => entry !== id);
+        } else {
+          if (state.selected.length >= slotLimit()) {
+            toast(`Max ${slotLimit()} staff`);
+            return;
+          }
+          state.selected.push(id);
+        }
+        saveState();
+        renderStaffGrid();
+        updateHome();
+      }
+
+      function openStaff() {
+        renderStaffGrid();
+        show("staff");
+      }
+
+      function renderItems() {
+        const wrap = $("#itemButtons");
+        wrap.innerHTML = "";
+        items.forEach((item) => {
+          const button = document.createElement("button");
+          button.className = "item-btn";
+          button.dataset.item = item.id;
+          button.innerHTML = `${asset(item.img, item.id)}<i class="cooldown"></i>`;
+          button.addEventListener("click", () => fireItem(item.id));
+          wrap.appendChild(button);
+        });
+      }
+
+      function renderSkills() {
+        const wrap = $("#skillButtons");
+        wrap.innerHTML = "";
+        selectedStaff().forEach((person) => {
+          const button = document.createElement("button");
+          button.className = "skill-btn";
+          button.dataset.skill = person.id;
+          button.innerHTML = `${asset(person.img, person.name)} ${skillLabel(person.skill)}`;
+          button.addEventListener("click", () => useSkill(person));
+          wrap.appendChild(button);
+        });
+        for (let i = selectedStaff().length; i < 3; i += 1) {
+          const filler = document.createElement("button");
+          filler.className = "skill-btn";
+          filler.disabled = true;
+          filler.textContent = "LOCK";
+          wrap.appendChild(filler);
+        }
+      }
+
+      function skillLabel(skill) {
+        if (skill === "slow") return "SLOW";
+        if (skill === "double") return "2X";
+        if (skill === "shield") return "+HP";
+        return "FAST";
+      }
+
+      function initGame() {
+        if (state.plays <= 0) {
+          toast("No plays left. Invite for +1 play.");
+          return;
+        }
+        if (!state.selected.length) {
+          toast("Select staff first");
+          openStaff();
+          return;
+        }
+        state.plays -= 1;
+        saveState();
+        game.running = true;
+        game.startAt = performance.now();
+        game.lastAt = game.startAt;
+        game.nextSpawnAt = 0;
+        game.nextBeatAt = 0;
+        game.coins = 0;
+        game.orders = 0;
+        game.hp = 4;
+        game.combo = 0;
+        game.guests = [];
+        game.cooldowns = new Map();
+        game.usedSkills = new Set();
+        game.rushUntil = 0;
+        game.slowUntil = 0;
+        game.doubleUntil = 0;
+        lane.innerHTML = "";
+        renderItems();
+        renderSkills();
+        renderKeepers();
+        show("game");
+        beep(340, 0.08, "square", 0.05);
+        beep(680, 0.08, "square", 0.05, 0.08);
+        cancelAnimationFrame(game.raf);
+        game.raf = requestAnimationFrame(tick);
+      }
+
+      function renderKeepers() {
+        const row = $("#keeperRow");
+        row.innerHTML = "";
+        selectedStaff().forEach((person) => {
+          const node = document.createElement("div");
+          node.className = "keeper";
+          node.dataset.staff = person.id;
+          node.innerHTML = asset(person.img, person.name);
+          row.appendChild(node);
+        });
+      }
+
+      function useSkill(person) {
+        if (!game.running || game.usedSkills.has(person.id)) return;
+        const now = performance.now();
+        game.usedSkills.add(person.id);
+        const button = document.querySelector(`[data-skill="${person.id}"]`);
+        if (button) button.disabled = true;
+        const keeper = document.querySelector(`[data-staff="${person.id}"]`);
+        if (keeper) {
+          keeper.classList.add("power");
+          setTimeout(() => keeper.classList.remove("power"), 900);
+        }
+        if (person.skill === "slow") {
+          game.slowUntil = now + 3000;
+          game.guests.forEach((guest) => guest.el.classList.add("slow"));
+          toast("Customers slowed");
+        } else if (person.skill === "double") {
+          game.doubleUntil = now + 8000;
+          toast("Coins x2");
+        } else if (person.skill === "shield") {
+          game.hp = Math.min(3, game.hp + 1);
+          toast("+1 heart");
+        } else {
+          game.rushUntil = now + 5000;
+          toast("Fast items");
+        }
+        beep(780, 0.12, "sawtooth", 0.06);
+      }
+
+      function difficulty(elapsed) {
+        const p = Math.min(1, elapsed / TOTAL_TIME);
+        const round = Math.min(10, 1 + Math.floor(p * 10));
+        const phaseBoost = p < 0.18 ? 0 : p < 0.45 ? 0.2 : p < 0.72 ? 0.45 : 0.78;
+        return {
+          round,
+          spawnEvery: 1700 - phaseBoost * 760,
+          speed: 24 + phaseBoost * 96,
+          patience: 10800 - phaseBoost * 4200,
+          maxAlive: 1 + Math.floor(p * 4),
+          beatEvery: 760 - p * 360,
+        };
+      }
+
+      function spawnGuest(now, elapsed) {
+        const d = difficulty(elapsed);
+        if (game.guests.length >= d.maxAlive) return;
+        const wish = items[Math.floor(Math.random() * Math.min(items.length, 2 + Math.ceil(d.round / 3)))];
+        const guestType = customers[Math.floor(Math.random() * customers.length)];
+        const x = Math.random() * Math.max(12, lane.clientWidth - 62);
+        const el = document.createElement("div");
+        el.className = "customer";
+        el.innerHTML = `<div class="wish">${asset(wish.img, wish.id)}</div>${asset(guestType.img, guestType.id)}<div class="patience"><i></i></div>`;
+        lane.appendChild(el);
+        game.guests.push({
+          el,
+          wish: wish.id,
+          x,
+          y: -70,
+          bornAt: now,
+          speed: d.speed + Math.random() * 18,
+          patience: d.patience,
+          gone: false,
+        });
+      }
+
+      function fireItem(itemId) {
+        if (!game.running) return;
+        const now = performance.now();
+        const item = items.find((entry) => entry.id === itemId);
+        const cooldown = item.cooldown * (now < game.rushUntil ? 0.65 : 1);
+        if ((game.cooldowns.get(itemId) || 0) > now) {
+          beep(150, 0.035, "square", 0.03);
+          return;
+        }
+        game.cooldowns.set(itemId, now + cooldown);
+        startCooldown(itemId, cooldown);
+        const target = game.guests
+          .filter((guest) => !guest.gone && guest.wish === itemId)
+          .sort((a, b) => b.y - a.y)[0];
+        if (!target) {
+          game.combo = 0;
+          shake();
+          floatText("NO ORDER", 154, phone.clientHeight - 188);
+          return;
+        }
+        throwItem(item, target);
+      }
+
+      function throwItem(item, target) {
+        const button = document.querySelector(`[data-item="${item.id}"]`);
+        const phoneRect = phone.getBoundingClientRect();
+        const buttonRect = button.getBoundingClientRect();
+        const targetRect = target.el.getBoundingClientRect();
+        const projectile = document.createElement("div");
+        projectile.className = "projectile";
+        projectile.innerHTML = asset(item.img, item.id);
+        const sx = buttonRect.left - phoneRect.left + buttonRect.width / 2 - 16;
+        const sy = buttonRect.top - phoneRect.top + buttonRect.height / 2 - 16;
+        const ex = targetRect.left - phoneRect.left + targetRect.width / 2 - 16;
+        const ey = targetRect.top - phoneRect.top + targetRect.height / 2 - 16;
+        projectile.style.left = `${sx}px`;
+        projectile.style.top = `${sy}px`;
+        phone.appendChild(projectile);
+        projectile.animate(
+          [
+            { transform: "translate(0,0) scale(1)" },
+            { transform: `translate(${(ex - sx) * 0.5}px, ${ey - sy - 62}px) scale(1.15)` },
+            { transform: `translate(${ex - sx}px, ${ey - sy}px) scale(.95)` },
+          ],
+          { duration: 250, easing: "cubic-bezier(.2,.75,.15,1)" }
+        ).onfinish = () => {
+          projectile.remove();
+          satisfy(target);
+        };
+        beep(430, 0.05, "square", 0.04);
+      }
+
+      function satisfy(guest) {
+        if (guest.gone) return;
+        guest.gone = true;
+        guest.el.classList.add("hit");
+        game.combo += 1;
+        game.orders += 1;
+        const comboBonus = Math.min(4, 1 + Math.floor(game.combo / 3));
+        const double = performance.now() < game.doubleUntil ? 2 : 1;
+        const gain = 40 * comboBonus * double;
+        game.coins += gain;
+        floatText(`+${gain}`, lane.offsetLeft + guest.x + 6, lane.offsetTop + guest.y);
+        beep(620 + Math.min(360, game.combo * 20), 0.06, "triangle", 0.05);
+        setTimeout(() => guest.el.remove(), 420);
+      }
+
+      function tick(now) {
+        if (!game.running) return;
+        const elapsed = (now - game.startAt) / 1000;
+        const dt = Math.min(0.05, (now - game.lastAt) / 1000);
+        game.lastAt = now;
+        const d = difficulty(elapsed);
+        if (now >= game.nextSpawnAt) {
+          spawnGuest(now, elapsed);
+          game.nextSpawnAt = now + d.spawnEvery * (0.82 + Math.random() * 0.35);
+          if (d.round >= 7 && Math.random() < 0.25) {
+            setTimeout(() => spawnGuest(performance.now(), elapsed), 210);
+          }
+        }
+        if (now >= game.nextBeatAt) {
+          beep(d.round >= 7 ? 220 : 170, 0.03, "square", 0.015);
+          game.nextBeatAt = now + d.beatEvery;
+        }
+        const slowed = now < game.slowUntil;
+        game.guests.forEach((guest) => {
+          if (guest.gone) return;
+          guest.y += guest.speed * dt * (slowed ? 0.38 : 1);
+          guest.el.style.transform = `translate(${guest.x}px, ${guest.y}px)`;
+          const patienceLeft = Math.max(0, 1 - (now - guest.bornAt) / guest.patience);
+          guest.el.querySelector(".patience i").style.transform = `scaleX(${patienceLeft})`;
+          guest.el.querySelector(".patience i").style.background = patienceLeft < 0.35 ? "var(--red)" : "var(--green)";
+          if (guest.y > lane.clientHeight - 20 || patienceLeft <= 0) missGuest(guest);
+        });
+        if (!slowed) game.guests.forEach((guest) => guest.el.classList.remove("slow"));
+        game.guests = game.guests.filter((guest) => !guest.gone || guest.el.isConnected);
+        $("#roundText").textContent = `R${d.round}/10`;
+        $("#timeBar").style.transform = `scaleX(${Math.max(0, 1 - elapsed / TOTAL_TIME)})`;
+        $("#coinText").textContent = game.coins;
+        $("#bizText").textContent = `ORDERS ${game.orders}/${TARGET_ORDERS} · WINS ${state.winsTowardUnlock}/3`;
+        $("#hpText").textContent = "♥".repeat(game.hp).padEnd(4, "♡");
+        if (elapsed >= TOTAL_TIME || game.hp <= 0) {
+          finishGame(game.hp > 0 && game.orders >= TARGET_ORDERS);
+          return;
+        }
+        game.raf = requestAnimationFrame(tick);
+      }
+
+      function missGuest(guest) {
+        if (guest.gone) return;
+        guest.gone = true;
+        guest.el.remove();
+        game.hp -= 1;
+        game.combo = 0;
+        shake();
+        floatText("-HP", 286, phone.clientHeight - 252);
+        beep(120, 0.13, "sawtooth", 0.06);
+      }
+
+      function finishGame(win) {
+        game.running = false;
+        cancelAnimationFrame(game.raf);
+        lane.innerHTML = "";
+        state.totalCoins += game.coins;
+        let unlocked = null;
+        if (win) {
+          state.winsTowardUnlock += 1;
+          if (state.winsTowardUnlock >= WIN_UNLOCK_STEP) {
+            const next = staff.find((person) => !state.unlocked.includes(person.id));
+            if (next) {
+              state.unlocked.push(next.id);
+              state.selected = [...new Set([...state.selected, next.id])].slice(0, slotLimit());
+              unlocked = next;
+            }
+            state.winsTowardUnlock = 0;
+          }
+        }
+        saveState();
+        $("#resultTitle").textContent = win ? "ROUND CLEAR" : "COUNTER DOWN";
+        $("#resultCopy").textContent = win
+          ? "Win counted. Win 3 rounds to unlock a new staff."
+          : "Coins are saved. Invite for more plays or staff assist.";
+        $("#finalCoins").textContent = game.coins;
+        $("#finalOrders").textContent = `${game.orders}/${TARGET_ORDERS}`;
+        $("#finalWins").textContent = `${state.winsTowardUnlock}/3`;
+        renderPrizeCards("#resultPrizes", true);
+        $("#unlockNote").textContent = unlocked
+          ? `NEW STAFF READY: ${unlocked.icon} ${unlocked.name}`
+          : `NEXT STAFF: ${nextStaffText()}`;
+        show("result");
+        if (unlocked) {
+          setTimeout(() => {
+            $("#unlockSprite").innerHTML = asset(unlocked.img, unlocked.name);
+            $("#unlockText").textContent = `${unlocked.name} joined. You can select up to ${slotLimit()} staff.`;
+            show("unlock");
+          }, 850);
+        }
+      }
+
+      function nextStaffText() {
+        const next = staff.find((person) => !state.unlocked.includes(person.id));
+        if (!next) return "ALL STAFF UNLOCKED";
+        return `${next.name} in ${WIN_UNLOCK_STEP - state.winsTowardUnlock} wins`;
+      }
+
+      function renderPrizeCards(target, compact = false) {
+        const wrap = $(target);
+        wrap.innerHTML = "";
+        prizes.forEach((prize) => {
+          const affordable = state.totalCoins >= prize.cost;
+          const card = document.createElement("button");
+          card.className = "prize-card";
+          card.innerHTML = `
+            <span class="icon">${asset(prize.img, prize.name)}</span>
+            <span><b>${prize.name}</b><small>${Math.min(state.totalCoins, prize.cost)}/${prize.cost} COINS</small></span>
+            <span class="tiny">${affordable ? "GET" : "LOCK"}</span>
+          `;
+          card.addEventListener("click", () => toast(affordable ? "Redemption placeholder" : `${prize.cost - state.totalCoins} coins left`));
+          wrap.appendChild(card);
+        });
+      }
+
+      function openPrizes(from) {
+        lastScreen = from;
+        renderPrizeCards("#prizeList");
+        show("prize");
+      }
+
+      function invitePlay() {
+        state.plays += 1;
+        saveState();
+        updateHome();
+        const homePlays = $("#homePlays");
+        if (homePlays) homePlays.textContent = state.plays;
+        toast("Demo: invite success, +1 play");
+      }
+
+      function staffAssist() {
+        toast("Demo: friend staff assist reserved for v0.2");
+      }
+
+      function startCooldown(itemId, cooldown) {
+        const layer = document.querySelector(`[data-item="${itemId}"] .cooldown`);
+        layer.animate([{ transform: "scaleY(1)" }, { transform: "scaleY(0)" }], {
+          duration: cooldown,
+          easing: "linear",
+        });
+      }
+
+      function shake() {
+        phone.classList.remove("shake");
+        void phone.offsetWidth;
+        phone.classList.add("shake");
+      }
+
+      function floatText(text, x, y) {
+        const node = document.createElement("div");
+        node.className = "float";
+        node.textContent = text;
+        node.style.left = `${x}px`;
+        node.style.top = `${y}px`;
+        phone.appendChild(node);
+        setTimeout(() => node.remove(), 820);
+      }
+
+      function toast(text) {
+        const old = document.querySelector(".toast");
+        if (old) old.remove();
+        const node = document.createElement("div");
+        node.className = "toast";
+        node.textContent = text;
+        phone.appendChild(node);
+        setTimeout(() => node.remove(), 1300);
+      }
+
+      function beep(freq, duration, type = "sine", gain = 0.04, delay = 0) {
+        if (!game.soundOn) return;
+        try {
+          audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+          const start = audioCtx.currentTime + delay;
+          const oscillator = audioCtx.createOscillator();
+          const volume = audioCtx.createGain();
+          oscillator.type = type;
+          oscillator.frequency.setValueAtTime(freq, start);
+          volume.gain.setValueAtTime(0.0001, start);
+          volume.gain.exponentialRampToValueAtTime(gain, start + 0.012);
+          volume.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+          oscillator.connect(volume);
+          volume.connect(audioCtx.destination);
+          oscillator.start(start);
+          oscillator.stop(start + duration + 0.02);
+        } catch {
+          game.soundOn = false;
+        }
+      }
+
+      $("#chooseStaffBtn").addEventListener("click", openStaff);
+      $("#backHomeFromStaff").addEventListener("click", () => {
+        updateHome();
+        show("home");
+      });
+      $("#confirmStaffStart").addEventListener("click", initGame);
+      $("#againBtn").addEventListener("click", openStaff);
+      $("#openPrizesHome").addEventListener("click", () => openPrizes("home"));
+      $("#openPrizesResult").addEventListener("click", () => openPrizes("result"));
+      $("#closePrizes").addEventListener("click", () => {
+        updateHome();
+        show(lastScreen);
+      });
+      $("#invitePlayHome").addEventListener("click", invitePlay);
+      $("#invitePlayResult").addEventListener("click", invitePlay);
+      $("#invitePlayPrize").addEventListener("click", invitePlay);
+      $("#assistBtn").addEventListener("click", staffAssist);
+      $("#unlockContinue").addEventListener("click", openStaff);
+
+      updateHome();
+    </script>
+  </body>
+</html>
