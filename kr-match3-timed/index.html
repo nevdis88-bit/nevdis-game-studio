@@ -1,0 +1,930 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Secondary Game Page Spec Preview</title>
+  <style>
+    :root {
+      --viewport-w: 390px;
+      --viewport-h: 844px;
+      --nav-y: 46px;
+      --nav-h: 44px;
+      --main-gap-top: 16px;
+      --main-gap-bottom: 80px;
+      --toolbar-h: 182px;
+      --toolbar-y: calc(var(--viewport-h) - var(--toolbar-h));
+      --main-y: calc(var(--nav-y) + var(--nav-h) + var(--main-gap-top));
+      --main-h: calc(var(--toolbar-y) - var(--main-gap-bottom) - var(--main-y));
+      --rule-overlap: 10px;
+      --toolbar-bg: #faf8f2;
+      --slot-bg: #e4e0d3;
+      --badge-red: #f64842;
+      --page-blue: #11255d;
+      --ink: #292929;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      background: #202020;
+      color: #fff;
+      font-family: "TikTok Sans", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      padding: 0;
+    }
+
+    .phone {
+      position: relative;
+      width: var(--viewport-w);
+      height: var(--viewport-h);
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(255,255,255,.08), transparent 28%),
+        linear-gradient(180deg, #11255d 0%, #132765 54%, #0e1c47 100%);
+      box-shadow: 0 24px 80px rgba(0,0,0,.38);
+    }
+
+    .status-bar {
+      position: absolute;
+      inset: 0 0 auto;
+      height: 47px;
+      pointer-events: none;
+    }
+
+    .time-os {
+      position: absolute;
+      left: 35px;
+      top: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      font-size: 17px;
+      font-weight: 600;
+      line-height: 22px;
+      letter-spacing: -0.408px;
+      color: #fff;
+    }
+
+    .system-icons {
+      position: absolute;
+      right: 25px;
+      top: 19px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      opacity: .95;
+    }
+
+    .signal {
+      width: 21px;
+      height: 13px;
+      background: linear-gradient(to top, #fff 0 4px, transparent 4px 100%),
+        linear-gradient(to top, transparent 0 4px, #fff 4px 8px, transparent 8px 100%),
+        linear-gradient(to top, transparent 0 8px, #fff 8px 12px, transparent 12px 100%);
+      background-size: 5px 100%, 5px 100%, 5px 100%;
+      background-position: 0 0, 8px 0, 16px 0;
+      background-repeat: no-repeat;
+    }
+
+    .wifi {
+      width: 18px;
+      height: 13px;
+      border: 3px solid #fff;
+      border-bottom: 0;
+      border-left-color: transparent;
+      border-right-color: transparent;
+      border-radius: 14px 14px 0 0;
+      transform: translateY(2px);
+    }
+
+    .battery {
+      width: 29px;
+      height: 14px;
+      border: 2px solid #fff;
+      border-radius: 4px;
+      position: relative;
+    }
+
+    .battery::after {
+      content: "";
+      position: absolute;
+      right: -4px;
+      top: 4px;
+      width: 2px;
+      height: 4px;
+      background: #fff;
+      border-radius: 0 2px 2px 0;
+    }
+
+    .battery::before {
+      content: "";
+      position: absolute;
+      left: 2px;
+      top: 2px;
+      width: 18px;
+      height: 6px;
+      background: #fff;
+      border-radius: 2px;
+    }
+
+    .nav-bar {
+      position: absolute;
+      left: 0;
+      top: var(--nav-y);
+      width: var(--viewport-w);
+      height: var(--nav-h);
+      z-index: 40;
+    }
+
+    .pause-btn {
+      position: absolute;
+      left: 16px;
+      top: 2px;
+      width: 40px;
+      height: 40px;
+      border: 0;
+      padding: 0;
+      border-radius: 999px;
+      background: transparent;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+    }
+
+    .pause-btn img {
+      display: block;
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+    }
+
+    .timer-pill {
+      position: absolute;
+      top: 9px;
+      left: 50%;
+      transform: translateX(-50%);
+      height: 28px;
+      min-width: 70px;
+      padding: 0 16px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.28);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 800;
+      line-height: 125%;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .acquired {
+      position: absolute;
+      right: 16px;
+      top: 9.5px;
+      height: 25px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: #ffde55;
+      font-size: 20px;
+      font-weight: 600;
+      line-height: 125%;
+      letter-spacing: 0;
+    }
+
+    .acquired img {
+      width: 24px;
+      height: 24px;
+      display: block;
+    }
+
+    .main-area {
+      position: absolute;
+      left: 0;
+      top: var(--main-y);
+      width: var(--viewport-w);
+      height: var(--main-h);
+      border-radius: 16px;
+      background: transparent;
+      z-index: 10;
+      overflow: hidden;
+      padding: 18px 20px;
+    }
+
+    .board {
+      position: relative;
+      width: 350px;
+      height: 392px;
+      margin: 32px auto 0;
+      border-radius: 18px;
+      display: grid;
+      grid-template-columns: repeat(7, 46px);
+      grid-auto-rows: 46px;
+      gap: 4px;
+      justify-content: center;
+      align-content: center;
+    }
+
+    .goal-strip {
+      position: absolute;
+      left: 20px;
+      right: 20px;
+      top: 14px;
+      height: 34px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.24);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      font-size: 13px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .goal-strip span:last-child {
+      color: #ffde55;
+    }
+
+    .tile {
+      width: 46px;
+      height: 46px;
+      border: 0;
+      border-radius: 8px;
+      box-shadow: inset 0 -3px 0 rgba(0,0,0,.16);
+      cursor: pointer;
+      transition: transform .12s ease, filter .12s ease, box-shadow .12s ease;
+      color: rgba(0,0,0,.58);
+      font-size: 18px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .tile[data-type="a"] { background: #ffdf5a; }
+    .tile[data-type="b"] { background: #ff7a89; }
+    .tile[data-type="c"] { background: #5bd8ff; }
+    .tile[data-type="d"] { background: #80e27e; }
+    .tile[data-type="e"] { background: #c68cff; }
+    .tile[data-type="f"] { background: #ffb35a; }
+    .tile[data-type="g"] { background: #72e4c5; }
+    .tile[data-type="h"] { background: #f79ee2; }
+    .tile[data-type="i"] { background: #a3d65c; }
+    .tile[data-type="j"] { background: #8db5ff; }
+    .tile[data-type="k"] { background: #ffd16e; }
+    .tile[data-type="l"] { background: #e59bff; }
+    .tile[data-type="m"] { background: #b8d8ff; }
+    .tile[data-type="n"] { background: #ff9f6e; }
+    .tile[data-type="o"] { background: #b6ee8f; }
+    .tile[data-type="p"] { background: #ff8fc7; }
+
+    .tile.is-selected {
+      transform: scale(.92);
+      filter: brightness(1.1);
+      box-shadow: 0 0 0 3px rgba(255,255,255,.86), inset 0 -3px 0 rgba(0,0,0,.16);
+    }
+
+    .tile.is-hint {
+      animation: pulseHint .72s ease-in-out infinite alternate;
+      box-shadow: 0 0 0 3px rgba(255,255,255,.96), 0 0 18px rgba(255,222,85,.8), inset 0 -3px 0 rgba(0,0,0,.16);
+    }
+
+    .tile.is-moving {
+      pointer-events: none;
+      transform: scale(.82);
+      opacity: .28;
+    }
+
+    .tile-placeholder {
+      width: 46px;
+      height: 46px;
+      pointer-events: none;
+    }
+
+    @keyframes pulseHint {
+      from { transform: scale(1); }
+      to { transform: scale(1.1); }
+    }
+
+    .rule-group {
+      position: absolute;
+      left: 16px;
+      top: calc(var(--toolbar-y) + var(--rule-overlap) - 80px);
+      height: 80px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .rule-ip {
+      width: 80px;
+      height: 80px;
+      border-radius: 8px;
+      background: #e8edf7;
+      display: grid;
+      place-items: center;
+      color: #667085;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .rule-bubble {
+      width: max-content;
+      max-width: 250px;
+      padding: 8px 20px;
+      border-radius: 16px 16px 16px 0;
+      background: #000;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 125%;
+      letter-spacing: 0;
+      white-space: normal;
+    }
+
+    .toolbar {
+      position: absolute;
+      left: 0;
+      top: var(--toolbar-y);
+      width: var(--viewport-w);
+      height: var(--toolbar-h);
+      z-index: 30;
+    }
+
+    .candidate-container {
+      position: absolute;
+      left: 5px;
+      top: 0;
+      width: 380px;
+      height: 68px;
+      border-radius: 16px;
+      background: var(--toolbar-bg);
+      padding: 12px;
+    }
+
+    .candidate-row {
+      width: 356px;
+      height: 44px;
+      display: grid;
+      grid-template-columns: repeat(7, 44px);
+      gap: 8px;
+    }
+
+    .candidate-slot {
+      width: 44px;
+      height: 44px;
+      border-radius: 4px;
+      background: var(--slot-bg);
+      display: grid;
+      place-items: center;
+      position: relative;
+    }
+
+    .tray-tile {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: rgba(0,0,0,.58);
+      font-size: 18px;
+      font-weight: 900;
+      box-shadow: inset 0 -3px 0 rgba(0,0,0,.16);
+    }
+
+    .tray-tile[data-type="a"] { background: #ffdf5a; }
+    .tray-tile[data-type="b"] { background: #ff7a89; }
+    .tray-tile[data-type="c"] { background: #5bd8ff; }
+    .tray-tile[data-type="d"] { background: #80e27e; }
+    .tray-tile[data-type="e"] { background: #c68cff; }
+    .tray-tile[data-type="f"] { background: #ffb35a; }
+    .tray-tile[data-type="g"] { background: #72e4c5; }
+    .tray-tile[data-type="h"] { background: #f79ee2; }
+    .tray-tile[data-type="i"] { background: #a3d65c; }
+    .tray-tile[data-type="j"] { background: #8db5ff; }
+    .tray-tile[data-type="k"] { background: #ffd16e; }
+    .tray-tile[data-type="l"] { background: #e59bff; }
+    .tray-tile[data-type="m"] { background: #b8d8ff; }
+    .tray-tile[data-type="n"] { background: #ff9f6e; }
+
+    .item-row-bg {
+      position: absolute;
+      left: 0;
+      top: 73px;
+      width: 390px;
+      height: 109px;
+      border-radius: 16px 16px 0 0;
+      background: var(--toolbar-bg);
+    }
+
+    .item-group {
+      position: absolute;
+      left: 24px;
+      top: 10px;
+      width: 342px;
+      height: 79px;
+      display: grid;
+      grid-template-columns: repeat(3, 90px);
+      gap: 36px;
+    }
+
+    .item-card {
+      position: relative;
+      width: 90px;
+      height: 79px;
+      border-radius: 8px;
+      background: rgba(228,224,211,.45);
+    }
+
+    .item-icon {
+      position: absolute;
+      left: 24px;
+      top: 8px;
+      width: 42px;
+      height: 42px;
+      border-radius: 4px;
+      background: #d7d3c6;
+      display: grid;
+      place-items: center;
+      color: #58564f;
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .item-label {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 53px;
+      height: 20px;
+      text-align: center;
+      color: var(--ink);
+      font-size: 16px;
+      font-weight: 800;
+      line-height: 125%;
+      letter-spacing: 0;
+    }
+
+    .badge {
+      position: absolute;
+      right: -12px;
+      top: -4px;
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: var(--badge-red);
+      border: 1px solid #fff;
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 125%;
+    }
+
+    .badge svg {
+      width: 12px;
+      height: 12px;
+      display: block;
+    }
+
+    .modal {
+      position: absolute;
+      inset: 0;
+      z-index: 80;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,.45);
+    }
+
+    .modal.is-open {
+      display: flex;
+    }
+
+    .modal-card {
+      width: 318px;
+      min-height: 190px;
+      border-radius: 28px;
+      background: #fff;
+      color: #111;
+      padding: 28px 24px 24px;
+      text-align: center;
+      box-shadow: 0 18px 52px rgba(0,0,0,.32);
+    }
+
+    .modal-card h2 {
+      margin: 0 0 12px;
+      font-size: 24px;
+      line-height: 1.18;
+    }
+
+    .modal-card p {
+      margin: 0 0 24px;
+      font-size: 14px;
+      color: #5b5b5b;
+      line-height: 1.5;
+    }
+
+    .modal-card button {
+      width: 100%;
+      height: 56px;
+      border: 0;
+      border-radius: 999px;
+      background: #ff2f65;
+      color: #fff;
+      font-size: 17px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .modal-card .benefit {
+      margin: 6px 0 24px;
+      font-size: 32px;
+      font-weight: 900;
+      color: #ff9500;
+    }
+  </style>
+</head>
+<body>
+  <main class="phone" aria-label="二级游戏页规范预览">
+    <section class="status-bar" aria-hidden="true">
+      <div class="time-os">8:00</div>
+      <div class="system-icons">
+        <span class="signal"></span>
+        <span class="wifi"></span>
+        <span class="battery"></span>
+      </div>
+    </section>
+
+    <nav class="nav-bar" aria-label="游戏顶部栏">
+      <button class="pause-btn" id="pauseBtn" aria-label="暂停">
+        <img id="pauseIcon" src="./assets/topbar/pause-white.png" alt="" />
+      </button>
+      <div class="timer-pill" aria-label="倒计时">0:45</div>
+      <div class="acquired" aria-label="已获得物">
+        <img src="./assets/topbar/acquired-points-default.png" alt="" />
+        <span>56</span>
+      </div>
+    </nav>
+
+    <section class="main-area" aria-label="主玩法区">
+      <div class="goal-strip">
+        <span>消除 20 组</span>
+        <span id="goalText">0 / 20</span>
+      </div>
+      <div class="board" id="board" aria-label="2D 点选收纳三消棋盘"></div>
+    </section>
+
+    <section class="rule-group" aria-label="规则描述">
+      <div class="rule-ip">IP</div>
+      <div class="rule-bubble">45秒内消除20组，备选栏满就失败！</div>
+    </section>
+
+    <section class="toolbar" aria-label="双栏工具栏">
+      <div class="candidate-container">
+        <div class="candidate-row" aria-label="备选栏">
+          <div class="candidate-slot" data-slot="0"></div>
+          <div class="candidate-slot" data-slot="1"></div>
+          <div class="candidate-slot" data-slot="2"></div>
+          <div class="candidate-slot" data-slot="3"></div>
+          <div class="candidate-slot" data-slot="4"></div>
+          <div class="candidate-slot" data-slot="5"></div>
+          <div class="candidate-slot" data-slot="6"></div>
+        </div>
+      </div>
+
+      <div class="item-row-bg">
+        <div class="item-group" aria-label="道具栏">
+          <button class="item-card" id="undoBtn" type="button">
+            <span class="item-icon">↺</span>
+            <span class="item-label">放回</span>
+            <span class="badge" id="returnBadge">1</span>
+          </button>
+          <button class="item-card" id="hintBtn" type="button">
+            <span class="item-icon">✦</span>
+            <span class="item-label">提示</span>
+            <span class="badge" id="hintBadge">1</span>
+          </button>
+          <button class="item-card" id="timeBtn" type="button">
+            <span class="item-icon">⚡</span>
+            <span class="item-label">加时</span>
+            <span class="badge" id="timeBadge">1</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="modal" id="pauseModal" aria-label="暂停弹窗">
+      <div class="modal-card">
+        <h2>暂停中</h2>
+        <p>继续后回到当前关卡。</p>
+        <button id="resumeBtn" type="button">继续</button>
+      </div>
+    </section>
+
+    <section class="modal" id="resultModal" aria-label="结算弹窗">
+      <div class="modal-card">
+        <h2 id="resultTitle">挑战成功</h2>
+        <p id="resultDesc">你完成了本轮目标</p>
+        <div class="benefit" id="resultBenefit">+120 P</div>
+        <button id="restartBtn" type="button">再玩一局</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const board = document.getElementById('board');
+    const goalText = document.getElementById('goalText');
+    const resultModal = document.getElementById('resultModal');
+    const resultTitle = document.getElementById('resultTitle');
+    const resultDesc = document.getElementById('resultDesc');
+    const resultBenefit = document.getElementById('resultBenefit');
+    const restartBtn = document.getElementById('restartBtn');
+    const slotEls = [...document.querySelectorAll('.candidate-slot')];
+    const returnBadge = document.getElementById('returnBadge');
+    const hintBadge = document.getElementById('hintBadge');
+    const timeBadge = document.getElementById('timeBadge');
+    const TARGET_GROUPS = 20;
+    const ROUND_SECONDS = 45;
+    const ADD_TIME_SECONDS = 8;
+    const symbols = {
+      a: '●', b: '◆', c: '▲', d: '★', e: '■', f: '✚',
+      g: '✿', h: '⬟', i: '♥', j: '☂', k: '♣', l: '✦',
+      m: '⬢', n: '☀'
+    };
+
+    let tiles = [];
+    let tray = [];
+    let lastMove = null;
+    let groupsCleared = 0;
+    let locked = false;
+    let timeLeft = ROUND_SECONDS;
+    let timerId = null;
+    let boosterCounts = { return: 1, hint: 1, time: 1 };
+
+    function shuffle(array) {
+      const copy = [...array];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function randomType() {
+      const types = Object.keys(symbols);
+      return types[Math.floor(Math.random() * types.length)];
+    }
+
+    function makeDeck() {
+      const types = Object.keys(symbols);
+      return shuffle(types.flatMap(type => Array.from({ length: 3 }, () => type)));
+    }
+
+    function updateBadges() {
+      returnBadge.textContent = boosterCounts.return > 0 ? boosterCounts.return : '+';
+      hintBadge.textContent = boosterCounts.hint > 0 ? boosterCounts.hint : '+';
+      timeBadge.textContent = boosterCounts.time > 0 ? boosterCounts.time : '+';
+    }
+
+    function renderBoard() {
+      board.innerHTML = '';
+      tiles.forEach((item) => {
+        if (item.removed) {
+          const placeholder = document.createElement('div');
+          placeholder.className = 'tile-placeholder';
+          board.appendChild(placeholder);
+          return;
+        }
+        const tile = document.createElement('button');
+        tile.className = 'tile';
+        tile.type = 'button';
+        tile.dataset.type = item.type;
+        tile.dataset.id = item.id;
+        tile.textContent = symbols[item.type];
+        tile.setAttribute('aria-label', `物品 ${symbols[item.type]}`);
+        tile.addEventListener('click', () => takeTile(item.id));
+        board.appendChild(tile);
+      });
+    }
+
+    function renderTray() {
+      slotEls.forEach((slot, index) => {
+        slot.innerHTML = '';
+        const item = tray[index];
+        if (!item) return;
+        const el = document.createElement('div');
+        el.className = 'tray-tile';
+        el.dataset.type = item.type;
+        el.textContent = symbols[item.type];
+        slot.appendChild(el);
+      });
+      goalText.textContent = `${groupsCleared} / ${TARGET_GROUPS}`;
+      updateBadges();
+    }
+
+    function takeTile(id) {
+      if (locked || tray.length >= 7) return;
+      const item = tiles.find(tile => tile.id === id);
+      if (!item || item.removed) return;
+      item.removed = true;
+      tray.push({ id: item.id, type: item.type, originIndex: item.index });
+      lastMove = item;
+      clearHints();
+      renderBoard();
+      renderTray();
+      window.setTimeout(resolveMatches, 120);
+    }
+
+    function resolveMatches() {
+      const byType = tray.reduce((map, item, index) => {
+        if (!map[item.type]) map[item.type] = [];
+        map[item.type].push(index);
+        return map;
+      }, {});
+      const matchType = Object.keys(byType).find(type => byType[type].length >= 3);
+      if (matchType) {
+        locked = true;
+        const removeIndexes = byType[matchType].slice(0, 3);
+        window.setTimeout(() => {
+          removeIndexes.forEach(index => {
+            const originIndex = tray[index].originIndex;
+            tiles[originIndex] = {
+              id: `tile-${Date.now()}-${originIndex}-${Math.random().toString(16).slice(2)}`,
+              index: originIndex,
+              type: randomType(),
+              removed: false
+            };
+          });
+          tray = tray.filter((_, index) => !removeIndexes.includes(index));
+          groupsCleared += 1;
+          locked = false;
+          renderBoard();
+          renderTray();
+          checkEnd();
+        }, 180);
+        return;
+      }
+      checkEnd();
+    }
+
+    function checkEnd() {
+      if (groupsCleared >= TARGET_GROUPS) {
+        showResult(true);
+        return;
+      }
+      if (tray.length >= 7) {
+        showResult(false);
+      }
+    }
+
+    function showResult(success) {
+      locked = true;
+      resultTitle.textContent = success ? '挑战成功' : '挑战失败';
+      resultDesc.textContent = success ? '你完成了本轮消除目标' : (timeLeft <= 0 ? '时间到了，试着更快找到三连组合' : '收纳栏已满，试着更有计划地选择物品');
+      resultBenefit.textContent = success ? '+120 P' : '+20 P';
+      resultModal.classList.add('is-open');
+      stopTimer();
+    }
+
+    function resetGame() {
+      const deck = makeDeck();
+      tiles = deck.map((type, index) => ({ id: `tile-${Date.now()}-${index}`, index, type, removed: false }));
+      tray = [];
+      lastMove = null;
+      groupsCleared = 0;
+      timeLeft = ROUND_SECONDS;
+      boosterCounts = { return: 1, hint: 1, time: 1 };
+      locked = false;
+      resultModal.classList.remove('is-open');
+      renderBoard();
+      renderTray();
+      updateTimer();
+      startTimer();
+    }
+
+    function clearHints() {
+      board.querySelectorAll('.is-hint').forEach(el => el.classList.remove('is-hint'));
+    }
+
+    function findVisibleTriple() {
+      const visible = tiles.filter(tile => !tile.removed);
+      const grouped = visible.reduce((map, tile) => {
+        if (!map[tile.type]) map[tile.type] = [];
+        map[tile.type].push(tile.id);
+        return map;
+      }, {});
+      const type = Object.keys(grouped).find(key => grouped[key].length >= 3);
+      return type ? grouped[type].slice(0, 3) : [];
+    }
+
+    function showHint() {
+      clearHints();
+      findVisibleTriple().forEach(id => {
+        const el = board.querySelector(`[data-id="${id}"]`);
+        if (el) el.classList.add('is-hint');
+      });
+      window.setTimeout(clearHints, 1800);
+    }
+
+    function returnLastThree() {
+      if (locked || boosterCounts.return <= 0 || tray.length === 0) return;
+      const returning = tray.splice(Math.max(0, tray.length - 3));
+      returning.forEach(item => {
+        const origin = tiles[item.originIndex];
+        if (origin) {
+          tiles[item.originIndex] = {
+            id: item.id,
+            index: item.originIndex,
+            type: item.type,
+            removed: false
+          };
+        }
+      });
+      boosterCounts.return -= 1;
+      lastMove = null;
+      renderBoard();
+      renderTray();
+    }
+
+    function useHint() {
+      if (locked || boosterCounts.hint <= 0) return;
+      boosterCounts.hint -= 1;
+      showHint();
+      renderTray();
+    }
+
+    function addTime() {
+      if (locked || boosterCounts.time <= 0) return;
+      timeLeft += ADD_TIME_SECONDS;
+      boosterCounts.time -= 1;
+      updateTimer();
+      renderTray();
+    }
+
+    function updateTimer() {
+      const minutes = Math.floor(timeLeft / 60);
+      const seconds = String(timeLeft % 60).padStart(2, '0');
+      document.querySelector('.timer-pill').textContent = `${minutes}:${seconds}`;
+    }
+
+    function startTimer() {
+      stopTimer();
+      timerId = window.setInterval(() => {
+        if (locked) return;
+        timeLeft -= 1;
+        updateTimer();
+        if (timeLeft <= 0) {
+          timeLeft = 0;
+          updateTimer();
+          showResult(false);
+        }
+      }, 1000);
+    }
+
+    function stopTimer() {
+      if (timerId) {
+        window.clearInterval(timerId);
+        timerId = null;
+      }
+    }
+
+    document.getElementById('undoBtn').addEventListener('click', returnLastThree);
+    document.getElementById('hintBtn').addEventListener('click', useHint);
+    document.getElementById('timeBtn').addEventListener('click', addTime);
+    restartBtn.addEventListener('click', resetGame);
+
+    const pauseBtn = document.getElementById('pauseBtn');
+    const pauseIcon = document.getElementById('pauseIcon');
+    const pauseModal = document.getElementById('pauseModal');
+    const resumeBtn = document.getElementById('resumeBtn');
+
+    pauseBtn.addEventListener('click', () => {
+      pauseIcon.src = './assets/topbar/play-white.png';
+      pauseModal.classList.add('is-open');
+      stopTimer();
+    });
+
+    resumeBtn.addEventListener('click', () => {
+      pauseIcon.src = './assets/topbar/pause-white.png';
+      pauseModal.classList.remove('is-open');
+      startTimer();
+    });
+
+    resetGame();
+  </script>
+</body>
+</html>
