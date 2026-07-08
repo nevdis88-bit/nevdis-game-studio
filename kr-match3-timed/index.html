@@ -34,6 +34,8 @@
       height: 100%;
       margin: 0;
       overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: none;
       background: #202020;
       color: #fff;
       font-family: "TikTok Sans", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -51,6 +53,7 @@
       width: var(--viewport-w);
       height: var(--viewport-h);
       overflow: hidden;
+      touch-action: none;
       transform: scale(var(--app-scale, 1));
       transform-origin: center center;
       background:
@@ -62,6 +65,7 @@
     button {
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
+      user-select: none;
     }
 
     .status-bar {
@@ -243,6 +247,7 @@
       gap: 4px;
       justify-content: center;
       align-content: center;
+      touch-action: none;
     }
 
     .goal-strip {
@@ -267,9 +272,11 @@
     }
 
     .tile {
+      position: relative;
       width: 46px;
       height: 46px;
       border: 0;
+      padding: 0;
       border-radius: 8px;
       box-shadow: inset 0 -3px 0 rgba(0,0,0,.16);
       cursor: pointer;
@@ -278,6 +285,13 @@
       font-size: 18px;
       font-weight: 900;
       line-height: 1;
+    }
+
+    .tile::before {
+      content: "";
+      position: absolute;
+      inset: -3px;
+      border-radius: 10px;
     }
 
     .tile[data-type="a"] { background: #ffdf5a; }
@@ -723,6 +737,7 @@
         tile.type = 'button';
         tile.dataset.type = item.type;
         tile.dataset.id = item.id;
+        tile.draggable = false;
         tile.textContent = symbols[item.type];
         tile.setAttribute('aria-label', `物品 ${symbols[item.type]}`);
         bindPress(tile, () => takeTile(item.id));
@@ -755,7 +770,7 @@
       clearHints();
       renderBoard();
       renderTray();
-      window.setTimeout(resolveMatches, 120);
+      window.setTimeout(resolveMatches, 0);
     }
 
     function resolveMatches() {
@@ -784,7 +799,7 @@
           renderBoard();
           renderTray();
           checkEnd();
-        }, 180);
+        }, 70);
         return;
       }
       checkEnd();
@@ -912,10 +927,17 @@
     }
 
     function bindPress(element, handler) {
+      let lastPressTime = 0;
       element.addEventListener('pointerdown', (event) => {
         event.preventDefault();
+        const now = performance.now();
+        if (now - lastPressTime < 120) return;
+        lastPressTime = now;
         handler(event);
       }, { passive: false });
+      element.addEventListener('click', (event) => {
+        event.preventDefault();
+      });
     }
 
     function fitPhoneToViewport() {
