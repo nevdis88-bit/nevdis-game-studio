@@ -22,6 +22,9 @@
       --badge-red: #f64842;
       --page-blue: #11255d;
       --ink: #292929;
+      --board-size: 390px;
+      --tile-size: 54px;
+      --tile-gap: 2px;
     }
 
     * {
@@ -231,20 +234,20 @@
       border-radius: 16px;
       background: transparent;
       z-index: 10;
-      overflow: hidden;
-      padding: 18px 20px;
+      overflow: visible;
+      padding: 18px 0;
     }
 
     .board {
       position: relative;
-      width: 340px;
-      height: 340px;
-      margin: 30px auto 0;
+      width: var(--board-size);
+      height: var(--board-size);
+      margin: 58px auto 0;
       border-radius: 18px;
       display: grid;
-      grid-template-columns: repeat(7, 45px);
-      grid-auto-rows: 45px;
-      gap: 4px;
+      grid-template-columns: repeat(7, var(--tile-size));
+      grid-auto-rows: var(--tile-size);
+      gap: var(--tile-gap);
       justify-content: center;
       align-content: center;
       touch-action: none;
@@ -273,8 +276,8 @@
 
     .tile {
       position: relative;
-      width: 45px;
-      height: 45px;
+      width: var(--tile-size);
+      height: var(--tile-size);
       border: 0;
       padding: 0;
       border-radius: 8px;
@@ -365,8 +368,8 @@
     }
 
     .tile-placeholder {
-      width: 45px;
-      height: 45px;
+      width: var(--tile-size);
+      height: var(--tile-size);
       pointer-events: none;
     }
 
@@ -465,11 +468,11 @@
     }
 
     .tray-tile.is-entering {
-      animation: trayPop .2s cubic-bezier(.2, 1.15, .32, 1) both;
+      animation: trayPop .16s cubic-bezier(.2, 1.08, .32, 1) both;
     }
 
     .tray-tile.is-merging {
-      animation: trayMerge .26s cubic-bezier(.3, 0, .2, 1) forwards;
+      animation: trayMerge .18s cubic-bezier(.3, 0, .2, 1) forwards;
       z-index: 2;
     }
 
@@ -490,13 +493,13 @@
 
     @keyframes trayPop {
       0% { transform: scale(.35); opacity: 0; }
-      70% { transform: scale(1.1); opacity: 1; }
+      70% { transform: scale(1.06); opacity: 1; }
       100% { transform: scale(1); opacity: 1; }
     }
 
     @keyframes trayMerge {
       0% { transform: translateX(0) scale(1); opacity: 1; }
-      58% { transform: translateX(var(--merge-x, 0px)) scale(1.08); opacity: 1; }
+      58% { transform: translateX(var(--merge-x, 0px)) scale(1.04); opacity: 1; }
       100% { transform: translateX(var(--merge-x, 0px)) scale(.2); opacity: 0; }
     }
 
@@ -1065,6 +1068,7 @@
     let locked = false;
     let resolvingMatch = false;
     let matchResolveTimer = null;
+    let lastTileTapAt = 0;
     let timeLeft = ROUND_SECONDS;
     let timerId = null;
     let boosterCounts = { return: 1, hint: 1, time: 1 };
@@ -1073,9 +1077,11 @@
     const BGM_FADE_MS = 700;
     const BGM_LOOP_FADE_SECONDS = 1.2;
     let audioContext = null;
+    let audioUnlocked = false;
     let bgmAudio = null;
     let bgmFadeTimer = null;
     let bgmLoopRestarting = false;
+    let bgmPlayRequested = false;
 
     function ensureAudioContext() {
       if (!audioContext) {
@@ -1087,9 +1093,27 @@
       return audioContext;
     }
 
+    function unlockAudio() {
+      if (audioUnlocked) return;
+      try {
+        const ctx = ensureAudioContext();
+        const oscillator = ctx.createOscillator();
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.00001, ctx.currentTime);
+        oscillator.frequency.setValueAtTime(1, ctx.currentTime);
+        oscillator.connect(gain).connect(ctx.destination);
+        oscillator.start();
+        oscillator.stop(ctx.currentTime + 0.01);
+        audioUnlocked = true;
+      } catch (error) {
+        // Some browsers still wait for a stronger user gesture; the next tap retries.
+      }
+    }
+
     function playTone(frequency, duration = 0.09, delay = 0, gainValue = 0.035) {
       if (!mediaState.sfx) return;
       const ctx = ensureAudioContext();
+      if (ctx.state === 'suspended') return;
       const oscillator = ctx.createOscillator();
       const gain = ctx.createGain();
       const startAt = ctx.currentTime + delay;
@@ -1118,11 +1142,19 @@
         bgmAudio.addEventListener('ended', restartMusicLoop);
         document.body.appendChild(bgmAudio);
       }
+      if (!bgmAudio.paused && bgmAudio.volume > 0 && !bgmLoopRestarting) return;
+      if (bgmPlayRequested && !bgmAudio.paused && !bgmLoopRestarting) return;
       if (!Number.isFinite(bgmAudio.duration) || bgmAudio.duration - bgmAudio.currentTime > BGM_LOOP_FADE_SECONDS) {
         bgmLoopRestarting = false;
       }
       window.clearInterval(bgmFadeTimer);
-      bgmAudio.play().then(() => fadeMusicTo(BGM_VOLUME, BGM_FADE_MS)).catch(() => {});
+      bgmPlayRequested = true;
+      bgmAudio.play().then(() => {
+        bgmPlayRequested = false;
+        fadeMusicTo(BGM_VOLUME, BGM_FADE_MS);
+      }).catch(() => {
+        bgmPlayRequested = false;
+      });
     }
 
     function requestMusicStart() {
@@ -1153,6 +1185,7 @@
     function stopMusic(resetAtEnd = false) {
       if (!bgmAudio) return;
       bgmLoopRestarting = false;
+      bgmPlayRequested = false;
       if (bgmAudio.paused) {
         if (resetAtEnd) bgmAudio.currentTime = 0;
         return;
@@ -1174,9 +1207,11 @@
       bgmAudio.volume = 0;
       bgmAudio.play().then(() => {
         bgmLoopRestarting = false;
+        bgmPlayRequested = false;
         fadeMusicTo(BGM_VOLUME, BGM_FADE_MS);
       }).catch(() => {
         bgmLoopRestarting = false;
+        bgmPlayRequested = false;
       });
     }
 
@@ -1267,7 +1302,7 @@
       return { nextTray, insertIndex };
     }
 
-    function animateTileToSlot(sourceEl, item, slotIndex) {
+    function animateTileToSlot(sourceEl, item, slotIndex, compact = false) {
       if (!sourceEl || !sourceEl.getBoundingClientRect || !window.Element.prototype.animate) {
         return Promise.resolve();
       }
@@ -1286,13 +1321,23 @@
       phone.appendChild(flyer);
       const deltaX = (to.left + to.width / 2) - (from.left + from.width / 2);
       const deltaY = (to.top + to.height / 2) - (from.top + from.height / 2);
+      if (compact) {
+        const compactAnimation = flyer.animate([
+          { transform: 'translate(0, 0) scale(1)', opacity: .9 },
+          { transform: `translate(${deltaX}px, ${deltaY}px) scale(.96)`, opacity: 0 }
+        ], {
+          duration: 120,
+          easing: 'cubic-bezier(.2, .8, .2, 1)'
+        });
+        return compactAnimation.finished.catch(() => {}).finally(() => flyer.remove());
+      }
       const animation = flyer.animate([
         { transform: 'translate(0, 0) scale(1)', opacity: 1, offset: 0 },
-        { transform: `translate(${deltaX * .48}px, ${deltaY * .45 - 24}px) scale(1.08)`, opacity: 1, offset: .55 },
+        { transform: `translate(${deltaX * .48}px, ${deltaY * .45 - 18}px) scale(1.06)`, opacity: 1, offset: .55 },
         { transform: `translate(${deltaX}px, ${deltaY}px) scale(.92)`, opacity: 1, offset: .86 },
         { transform: `translate(${deltaX}px, ${deltaY}px) scale(1)`, opacity: 0, offset: 1 }
       ], {
-        duration: 260,
+        duration: 210,
         easing: 'cubic-bezier(.16, .95, .22, 1)'
       });
       return animation.finished.catch(() => {}).finally(() => flyer.remove());
@@ -1309,15 +1354,23 @@
           el.style.setProperty('--merge-x', `${distance}px`);
           el.classList.add('is-merging');
         });
-        window.setTimeout(resolve, 260);
+        window.setTimeout(resolve, 180);
       });
+    }
+
+    function replaceTileWithPlaceholder(sourceEl) {
+      if (!sourceEl || !sourceEl.parentNode) return false;
+      const placeholder = document.createElement('div');
+      placeholder.className = 'tile-placeholder';
+      sourceEl.replaceWith(placeholder);
+      return true;
     }
 
     function scheduleResolveMatches() {
       window.clearTimeout(matchResolveTimer);
       matchResolveTimer = window.setTimeout(() => {
         resolveMatches();
-      }, 120);
+      }, 70);
     }
 
     function takeTile(id, sourceEl) {
@@ -1330,9 +1383,12 @@
       lastMove = item;
       clearHints();
       sourceEl?.classList.add('is-selected');
-      animateTileToSlot(sourceEl, trayItem, insertIndex);
+      const now = Date.now();
+      const compactMotion = now - lastTileTapAt < 110;
+      lastTileTapAt = now;
+      animateTileToSlot(sourceEl, trayItem, insertIndex, compactMotion);
       tray = nextTray;
-      renderBoard();
+      if (!replaceTileWithPlaceholder(sourceEl)) renderBoard();
       renderTray(trayItem.id);
       scheduleResolveMatches();
     }
@@ -1418,6 +1474,7 @@
       groupsCleared = 0;
       earnedPoints = 0;
       resolvingMatch = false;
+      lastTileTapAt = 0;
       window.clearTimeout(matchResolveTimer);
       timeLeft = ROUND_SECONDS;
       boosterCounts = { return: 1, hint: 1, time: 1 };
@@ -1526,8 +1583,9 @@
       let lastPressTime = 0;
       element.addEventListener('pointerdown', (event) => {
         event.preventDefault();
+        unlockAudio();
         const now = performance.now();
-        if (now - lastPressTime < 120) return;
+        if (now - lastPressTime < 45) return;
         lastPressTime = now;
         handler(event);
       }, { passive: false });
@@ -1545,10 +1603,12 @@
     window.addEventListener('orientationchange', () => window.setTimeout(fitPhoneToViewport, 120));
     window.addEventListener('pageshow', requestMusicStart);
     document.addEventListener('pointerdown', () => {
-      if (!homeScreen.classList.contains('is-open')) {
+      unlockAudio();
+      const needsMusicStart = !bgmAudio || (bgmAudio.paused && !bgmPlayRequested);
+      if (needsMusicStart && !homeScreen.classList.contains('is-open')) {
         requestMusicStart();
       }
-    }, { once: true, capture: true });
+    }, { capture: true });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && !homeScreen.classList.contains('is-open')) {
         requestMusicStart();
