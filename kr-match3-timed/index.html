@@ -465,11 +465,11 @@
     }
 
     .tray-tile.is-entering {
-      animation: trayPop .28s cubic-bezier(.2, 1.45, .32, 1) both;
+      animation: trayPop .2s cubic-bezier(.2, 1.15, .32, 1) both;
     }
 
     .tray-tile.is-merging {
-      animation: trayMerge .34s cubic-bezier(.3, 0, .2, 1) forwards;
+      animation: trayMerge .26s cubic-bezier(.3, 0, .2, 1) forwards;
       z-index: 2;
     }
 
@@ -490,13 +490,13 @@
 
     @keyframes trayPop {
       0% { transform: scale(.35); opacity: 0; }
-      65% { transform: scale(1.18); opacity: 1; }
+      70% { transform: scale(1.1); opacity: 1; }
       100% { transform: scale(1); opacity: 1; }
     }
 
     @keyframes trayMerge {
       0% { transform: translateX(0) scale(1); opacity: 1; }
-      55% { transform: translateX(var(--merge-x, 0px)) scale(1.16); opacity: 1; }
+      58% { transform: translateX(var(--merge-x, 0px)) scale(1.08); opacity: 1; }
       100% { transform: translateX(var(--merge-x, 0px)) scale(.2); opacity: 0; }
     }
 
@@ -1063,6 +1063,8 @@
     let groupsCleared = 0;
     let earnedPoints = 0;
     let locked = false;
+    let resolvingMatch = false;
+    let matchResolveTimer = null;
     let timeLeft = ROUND_SECONDS;
     let timerId = null;
     let boosterCounts = { return: 1, hint: 1, time: 1 };
@@ -1286,12 +1288,12 @@
       const deltaY = (to.top + to.height / 2) - (from.top + from.height / 2);
       const animation = flyer.animate([
         { transform: 'translate(0, 0) scale(1)', opacity: 1, offset: 0 },
-        { transform: `translate(${deltaX * .5}px, ${deltaY * .45 - 34}px) scale(1.18)`, opacity: 1, offset: .58 },
-        { transform: `translate(${deltaX}px, ${deltaY}px) scale(.86)`, opacity: 1, offset: .86 },
+        { transform: `translate(${deltaX * .48}px, ${deltaY * .45 - 24}px) scale(1.08)`, opacity: 1, offset: .55 },
+        { transform: `translate(${deltaX}px, ${deltaY}px) scale(.92)`, opacity: 1, offset: .86 },
         { transform: `translate(${deltaX}px, ${deltaY}px) scale(1)`, opacity: 0, offset: 1 }
       ], {
-        duration: 360,
-        easing: 'cubic-bezier(.2, .9, .22, 1)'
+        duration: 260,
+        easing: 'cubic-bezier(.16, .95, .22, 1)'
       });
       return animation.finished.catch(() => {}).finally(() => flyer.remove());
     }
@@ -1307,30 +1309,36 @@
           el.style.setProperty('--merge-x', `${distance}px`);
           el.classList.add('is-merging');
         });
-        window.setTimeout(resolve, 340);
+        window.setTimeout(resolve, 260);
       });
     }
 
-    async function takeTile(id, sourceEl) {
-      if (locked || tray.length >= 7) return;
+    function scheduleResolveMatches() {
+      window.clearTimeout(matchResolveTimer);
+      matchResolveTimer = window.setTimeout(() => {
+        resolveMatches();
+      }, 120);
+    }
+
+    function takeTile(id, sourceEl) {
+      if (locked || resolvingMatch || tray.length >= 7) return;
       const item = tiles.find(tile => tile.id === id);
       if (!item || item.removed) return;
-      locked = true;
       item.removed = true;
       const trayItem = { id: item.id, type: item.type, originIndex: item.index };
       const { nextTray, insertIndex } = getGroupedInsert(tray, trayItem);
       lastMove = item;
       clearHints();
       sourceEl?.classList.add('is-selected');
-      const flight = animateTileToSlot(sourceEl, trayItem, insertIndex);
-      renderBoard();
-      await flight;
+      animateTileToSlot(sourceEl, trayItem, insertIndex);
       tray = nextTray;
+      renderBoard();
       renderTray(trayItem.id);
-      await resolveMatches();
+      scheduleResolveMatches();
     }
 
     async function resolveMatches() {
+      if (locked || resolvingMatch) return;
       const byType = tray.reduce((map, item, index) => {
         if (!map[item.type]) map[item.type] = [];
         map[item.type].push(index);
@@ -1338,6 +1346,7 @@
       }, {});
       const matchType = Object.keys(byType).find(type => byType[type].length >= 3);
       if (matchType) {
+        resolvingMatch = true;
         const removeIndexes = byType[matchType].slice(0, 3);
         await animateMerge(removeIndexes);
         removeIndexes.forEach(index => {
@@ -1353,28 +1362,31 @@
         groupsCleared += 1;
         earnedPoints += POINTS_PER_GROUP;
         playMatchFeedback();
-        locked = false;
+        resolvingMatch = false;
         renderBoard();
         renderTray();
-        checkEnd();
+        if (!checkEnd()) scheduleResolveMatches();
         return;
       }
-      locked = false;
       checkEnd();
     }
 
     function checkEnd() {
       if (groupsCleared >= TARGET_GROUPS) {
         showResult(true);
-        return;
+        return true;
       }
       if (tray.length >= 7) {
         showResult(false);
+        return true;
       }
+      return false;
     }
 
     function showResult(success) {
       locked = true;
+      resolvingMatch = false;
+      window.clearTimeout(matchResolveTimer);
       resultCard.classList.toggle('success', success);
       resultCard.classList.toggle('failure', !success);
       resultArt.src = success ? './assets/modal/challenge-success.png' : './assets/modal/challenge-failure.png';
@@ -1390,6 +1402,8 @@
       stopTimer();
       stopMusic(true);
       locked = true;
+      resolvingMatch = false;
+      window.clearTimeout(matchResolveTimer);
       resultModal.classList.remove('is-open');
       pauseModal.classList.remove('is-open');
       pauseIcon.src = './assets/topbar/pause-on-dark.png';
@@ -1403,6 +1417,8 @@
       lastMove = null;
       groupsCleared = 0;
       earnedPoints = 0;
+      resolvingMatch = false;
+      window.clearTimeout(matchResolveTimer);
       timeLeft = ROUND_SECONDS;
       boosterCounts = { return: 1, hint: 1, time: 1 };
       locked = false;
@@ -1443,7 +1459,8 @@
     }
 
     function returnLastThree() {
-      if (locked || boosterCounts.return <= 0 || tray.length === 0) return;
+      if (locked || resolvingMatch || boosterCounts.return <= 0 || tray.length === 0) return;
+      window.clearTimeout(matchResolveTimer);
       const returning = tray.splice(Math.max(0, tray.length - 3));
       returning.forEach(item => {
         const origin = tiles[item.originIndex];
@@ -1460,6 +1477,7 @@
       lastMove = null;
       renderBoard();
       renderTray();
+      scheduleResolveMatches();
     }
 
     function useHint() {
