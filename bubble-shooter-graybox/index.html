@@ -1328,9 +1328,18 @@
         : (reason === 'noTreasure' ? '没拿到大奖，再挑战一次' : '泡泡压到底线，挑战失败');
       resultCard.classList.toggle('result-success', success);
       resultCard.classList.toggle('result-failure', !success);
-      resultArt.src = success ? './assets/modal/challenge-success.png' : './assets/modal/challenge-failure.png';
+      setResultArt(success);
       benefitValue.textContent = String(points);
       resultModal.classList.add('is-open');
+    }
+
+    function setResultArt(success) {
+      const src = success ? './assets/modal/challenge-success.png' : './assets/modal/challenge-failure.png';
+      resultArt.onerror = () => {
+        resultArt.onerror = null;
+        resultArt.src = success ? './assets/modal/challenge-success.png' : './assets/modal/challenge-failure.png';
+      };
+      resultArt.src = src;
     }
 
     function bindPress(el, fn) {
