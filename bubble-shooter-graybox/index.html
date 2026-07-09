@@ -1,0 +1,1425 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Bubble Shooter Graybox</title>
+  <style>
+    :root {
+      --w: 390px;
+      --h: 844px;
+      --ink: #202020;
+      --pink: #fe2c55;
+      --gold: #ffde55;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #202020;
+      touch-action: none;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      min-height: 100dvh;
+    }
+
+    button {
+      border: 0;
+      padding: 0;
+      cursor: pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      font: inherit;
+    }
+
+    .phone {
+      position: relative;
+      width: var(--w);
+      height: var(--h);
+      overflow: hidden;
+      color: #fff;
+      background:
+        radial-gradient(circle at 50% 76%, rgba(88, 190, 92, .84) 0 18%, transparent 19%),
+        radial-gradient(ellipse at 50% 78%, #6dc34a 0 28%, #2f813a 29% 42%, transparent 43%),
+        linear-gradient(180deg, #0b215a 0%, #112b6a 36%, #163f3d 72%, #18351f 100%);
+      transform: scale(var(--app-scale, 1));
+      transform-origin: center center;
+      user-select: none;
+    }
+
+    .phone::before {
+      content: "";
+      position: absolute;
+      left: -68px;
+      right: -68px;
+      bottom: -48px;
+      height: 318px;
+      border-radius: 50% 50% 0 0;
+      background:
+        radial-gradient(ellipse at 50% 14%, rgba(255, 230, 175, .65), transparent 12%),
+        linear-gradient(135deg, transparent 0 43%, rgba(232, 196, 130, .92) 44% 50%, transparent 51%),
+        linear-gradient(45deg, transparent 0 43%, rgba(232, 196, 130, .92) 44% 50%, transparent 51%),
+        #458f42;
+      opacity: .95;
+    }
+
+    .phone::after {
+      content: "";
+      position: absolute;
+      left: 98px;
+      bottom: 30px;
+      width: 194px;
+      height: 156px;
+      border: 12px solid rgba(231, 196, 133, .92);
+      border-top: 0;
+      transform: perspective(280px) rotateX(52deg);
+      opacity: .85;
+      pointer-events: none;
+    }
+
+    .nav-bar {
+      position: absolute;
+      left: 0;
+      top: 16px;
+      width: var(--w);
+      height: 44px;
+      z-index: 30;
+    }
+
+    .pause-btn {
+      position: absolute;
+      left: 16px;
+      top: 2px;
+      width: 40px;
+      height: 40px;
+      background: transparent;
+    }
+
+    .pause-btn img,
+    .point-icon {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .timer-pill {
+      position: absolute;
+      top: 9px;
+      left: 50%;
+      transform: translateX(-50%);
+      min-width: 76px;
+      height: 28px;
+      padding: 0 16px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.24);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .points {
+      position: absolute;
+      right: 16px;
+      top: 9.5px;
+      height: 25px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--gold);
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .points.is-bump {
+      animation: pointBump .28s ease-out;
+    }
+
+    @keyframes pointBump {
+      0% { transform: scale(1); }
+      45% { transform: scale(1.22); }
+      100% { transform: scale(1); }
+    }
+
+    .point-icon {
+      width: 24px;
+      height: 24px;
+    }
+
+    .goal-card {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      top: 72px;
+      height: 42px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.15);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+      z-index: 20;
+    }
+
+    .goal-card strong {
+      display: none;
+      font-size: 13px;
+      opacity: .72;
+    }
+
+    .goal-card span {
+      display: block;
+      margin-top: 0;
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 18px;
+      white-space: nowrap;
+    }
+
+    .combo-meter {
+      width: 118px;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.18);
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.14);
+    }
+
+    .combo-meter-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #ffde55, #fe2c55);
+      transition: width .12s linear;
+    }
+
+    .arena-wrap {
+      position: absolute;
+      left: 0;
+      top: 132px;
+      width: var(--w);
+      height: 560px;
+      z-index: 5;
+    }
+
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 390px;
+      height: 560px;
+      display: block;
+      touch-action: none;
+    }
+
+    .reward-fx-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 24;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .float-score {
+      position: absolute;
+      left: var(--x);
+      top: var(--y);
+      transform: translate(-50%, -50%);
+      color: #ffde55;
+      font-size: 20px;
+      font-weight: 1000;
+      text-shadow: 0 3px 0 rgba(0,0,0,.22), 0 0 14px rgba(255,222,85,.62);
+      animation: floatScore .72s ease-out forwards;
+      white-space: nowrap;
+    }
+
+    .combo-toast {
+      position: absolute;
+      left: 50%;
+      top: 192px;
+      min-width: 148px;
+      height: 44px;
+      padding: 0 18px;
+      border-radius: 999px;
+      background: rgba(254,44,85,.94);
+      color: #fff;
+      display: none;
+      place-items: center;
+      transform: translateX(-50%) scale(.92);
+      font-size: 18px;
+      font-weight: 1000;
+      box-shadow: 0 12px 26px rgba(254,44,85,.34);
+    }
+
+    .combo-toast.is-show {
+      display: grid;
+      animation: comboPop .76s ease-out forwards;
+    }
+
+    .phone.is-shaking .arena-wrap {
+      animation: screenKick .22s ease-out;
+    }
+
+    @keyframes floatScore {
+      0% { opacity: 0; transform: translate(-50%, -20%) scale(.76); }
+      20% { opacity: 1; transform: translate(-50%, -50%) scale(1.18); }
+      100% { opacity: 0; transform: translate(-50%, -128%) scale(1); }
+    }
+
+    @keyframes comboPop {
+      0% { opacity: 0; transform: translateX(-50%) translateY(8px) scale(.84); }
+      20% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.08); }
+      72% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(.96); }
+    }
+
+    @keyframes screenKick {
+      0% { transform: translate3d(0,0,0); }
+      28% { transform: translate3d(-3px,2px,0); }
+      58% { transform: translate3d(3px,-1px,0); }
+      100% { transform: translate3d(0,0,0); }
+    }
+
+    .rule {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 125px;
+      z-index: 22;
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .rule-ip {
+      width: 72px;
+      height: 72px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.88);
+      color: #748094;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      box-shadow: 0 10px 24px rgba(0,0,0,.14);
+    }
+
+    .rule-bubble {
+      max-width: 252px;
+      min-height: 38px;
+      padding: 8px 20px;
+      border-radius: 16px 16px 16px 0;
+      background: #101010;
+      color: #fff;
+      font-size: 15px;
+      line-height: 22px;
+      font-weight: 800;
+      text-align: left;
+    }
+
+    .item-toolbar {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 390px;
+      height: 109px;
+      border-radius: 16px 16px 0 0;
+      background: #fffdf2;
+      z-index: 28;
+      color: var(--ink);
+      box-shadow: 0 -12px 30px rgba(0,0,0,.16);
+    }
+
+    .item-group {
+      position: absolute;
+      left: 24px;
+      top: 10px;
+      width: 342px;
+      height: 79px;
+      display: flex;
+      gap: 36px;
+    }
+
+    .tool-card {
+      position: relative;
+      width: 90px;
+      height: 79px;
+      border-radius: 8px;
+      background: rgba(238,235,222,.76);
+      color: #202020;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 8px;
+      font-size: 15px;
+      font-weight: 900;
+      box-shadow: inset 0 -2px 0 rgba(0,0,0,.08);
+    }
+
+    .tool-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 4px;
+      background: rgba(210,206,190,.86);
+      display: grid;
+      place-items: center;
+      margin-bottom: 3px;
+      font-size: 20px;
+    }
+
+    .tool-badge {
+      position: absolute;
+      right: -12px;
+      top: -4px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #ff3b42;
+      border: 2px solid #fffdf2;
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .home {
+      position: absolute;
+      inset: 0;
+      z-index: 80;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 42px;
+      background:
+        radial-gradient(circle at 50% 40%, rgba(255,255,255,.18), transparent 25%),
+        linear-gradient(180deg, #113381, #0f2258);
+      text-align: center;
+    }
+
+    .home.is-open { display: flex; }
+
+    .home h1 {
+      margin: 0 0 12px;
+      font-size: 40px;
+      line-height: 100%;
+      font-weight: 1000;
+      letter-spacing: 0;
+    }
+
+    .home p {
+      margin: 0 0 28px;
+      font-size: 15px;
+      line-height: 135%;
+      opacity: .76;
+    }
+
+    .primary-btn {
+      width: 274px;
+      height: 52px;
+      border-radius: 999px;
+      background: var(--pink);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .modal {
+      position: absolute;
+      inset: 0;
+      z-index: 90;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,.5);
+    }
+
+    .modal.is-open { display: flex; }
+
+    .modal-card {
+      position: relative;
+      width: 302px;
+      border-radius: 36px;
+      background: #fff;
+      color: var(--ink);
+      text-align: center;
+      padding: 40px 14px 14px;
+      box-shadow: 0 18px 52px rgba(0,0,0,.28);
+    }
+
+    .modal-card.result-success,
+    .modal-card.result-failure { height: 250px; }
+    .modal-card.pause-card { height: 322px; }
+
+    .modal-art {
+      position: absolute;
+      left: 0;
+      top: -92px;
+      width: 302px;
+      height: 116px;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
+    .modal-close {
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 44px;
+      height: 44px;
+      background: transparent;
+      padding: 0;
+    }
+
+    .modal-close::before {
+      content: "×";
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      background: rgba(22,24,35,.06);
+      color: #202020;
+      display: grid;
+      place-items: center;
+      font-size: 24px;
+      font-weight: 500;
+      line-height: 1;
+    }
+
+    .settlement-copy {
+      position: absolute;
+      left: 16px;
+      top: 40px;
+      width: 270px;
+      min-height: 110px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .settlement-copy h2 {
+      width: 222px;
+      height: 25px;
+      margin: 0;
+      font-size: 20px;
+      line-height: 125%;
+      font-weight: 800;
+    }
+
+    .settlement-copy p {
+      width: 258px;
+      min-height: 19px;
+      margin: 12px 0 0;
+      color: rgba(0,0,0,.62);
+      font-size: 15px;
+      line-height: 130%;
+    }
+
+    .benefit {
+      margin: 16px 0 0;
+      min-height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      color: #ff9500;
+      font-size: 32px;
+      font-weight: 900;
+    }
+
+    .benefit-plus {
+      width: 12px;
+      font-size: 24px;
+      margin-right: 6px;
+    }
+
+    .benefit-coin {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .settlement-button-area {
+      position: absolute;
+      left: 14px;
+      bottom: 14px;
+      width: 274px;
+      height: 52px;
+    }
+
+    .pause-settings {
+      position: absolute;
+      left: 42px;
+      top: 40px;
+      display: grid;
+      gap: 12px;
+      width: 218px;
+    }
+
+    .setting-row {
+      height: 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #202020;
+    }
+
+    .setting-row img {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+    }
+
+    .switch {
+      margin-left: auto;
+      width: 36px;
+      height: 22px;
+      border-radius: 999px;
+      background: #fe2c55;
+      position: relative;
+    }
+
+    .switch::after {
+      content: "";
+      position: absolute;
+      right: 2px;
+      top: 2px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #fff;
+    }
+
+    .secondary-btn {
+      width: 274px;
+      height: 52px;
+      border-radius: 999px;
+      background: #f1f1f1;
+      color: #202020;
+      font-size: 16px;
+      font-weight: 800;
+      margin-top: 10px;
+    }
+
+    .pause-actions {
+      position: absolute;
+      left: 14px;
+      bottom: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+  <main class="phone">
+    <nav class="nav-bar">
+      <button class="pause-btn" id="pauseBtn" aria-label="暂停">
+        <img src="./assets/topbar/pause-on-dark.png" alt="" />
+      </button>
+      <div class="timer-pill" id="timer">0:45</div>
+      <div class="points"><img class="point-icon" src="./assets/topbar/acquired-points-default.png" alt="" /><span id="points">0</span></div>
+    </nav>
+
+    <section class="goal-card">
+      <div>
+        <strong>目标</strong>
+        <span id="goalText">连击拿 points</span>
+      </div>
+      <div class="combo-meter" aria-label="连击倒计时"><div class="combo-meter-fill" id="comboMeterFill"></div></div>
+    </section>
+
+    <section class="arena-wrap" id="arenaWrap">
+      <canvas id="game" width="390" height="560"></canvas>
+    </section>
+    <div class="reward-fx-layer" id="rewardFxLayer">
+      <div class="combo-toast" id="comboToast"></div>
+    </div>
+
+    <section class="rule">
+      <div class="rule-ip">IP</div>
+      <div class="rule-bubble">3 个同色会消除；打通路径，命中宝藏 2 次领取。</div>
+    </section>
+
+    <section class="item-toolbar" aria-label="道具栏">
+      <div class="item-group">
+        <button class="tool-card" id="timeTool"><span class="tool-icon">+5s</span><span>加时间</span><span class="tool-badge" id="timeCount">1</span></button>
+        <button class="tool-card" id="swapTool"><span class="tool-icon">↻</span><span>换球</span><span class="tool-badge" id="swapCount">2</span></button>
+        <button class="tool-card" id="clearTool"><span class="tool-icon">✦</span><span>清一色</span><span class="tool-badge" id="clearCount">1</span></button>
+      </div>
+    </section>
+
+    <section class="home is-open" id="home">
+      <h1>泡泡打击</h1>
+      <p>一局 45 秒，瞄准发射同色球。消除泡泡打通路径，命中宝藏 2 次即可获得奖励，3 秒内连续消除会获得少量 points。</p>
+      <button class="primary-btn" id="startBtn">开始游戏</button>
+    </section>
+
+    <section class="modal" id="pauseModal">
+      <div class="modal-card pause-card">
+        <img class="modal-art" src="./assets/modal/pause-popup.png" alt="" />
+        <div class="pause-settings">
+          <div class="setting-row"><img src="./assets/pause/sfx.png" alt="" /><span>音效</span><span class="switch"></span></div>
+          <div class="setting-row"><img src="./assets/pause/music.png" alt="" /><span>音乐</span><span class="switch"></span></div>
+          <div class="setting-row"><img src="./assets/pause/vibration.png" alt="" /><span>震动</span><span class="switch"></span></div>
+        </div>
+        <div class="pause-actions">
+          <button class="primary-btn" id="resumeBtn">继续</button>
+          <button class="secondary-btn" id="giveUpBtn">放弃挑战</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="modal" id="resultModal">
+      <div class="modal-card result-success" id="resultCard">
+        <img class="modal-art" id="resultArt" src="./assets/modal/challenge-success.png" alt="" />
+        <button class="modal-close" id="resultCloseBtn" aria-label="关闭"></button>
+        <div class="settlement-copy">
+          <h2 id="resultTitle">挑战成功</h2>
+          <p id="resultDesc">你完成了本轮消除目标</p>
+          <div class="benefit" id="benefit"><span class="benefit-plus">+</span><img class="benefit-coin" src="./assets/modal/coin-icon.png" alt="" /><span id="benefitValue">0</span></div>
+        </div>
+        <div class="settlement-button-area">
+          <button class="primary-btn" id="againBtn">再来一局</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const arenaWrap = document.getElementById('arenaWrap');
+    const timerEl = document.getElementById('timer');
+    const pointsEl = document.getElementById('points');
+    const home = document.getElementById('home');
+    const resultModal = document.getElementById('resultModal');
+    const pauseModal = document.getElementById('pauseModal');
+    const resultTitle = document.getElementById('resultTitle');
+    const resultDesc = document.getElementById('resultDesc');
+    const resultCard = document.getElementById('resultCard');
+    const resultArt = document.getElementById('resultArt');
+    const benefitValue = document.getElementById('benefitValue');
+    const goalText = document.getElementById('goalText');
+    const comboMeterFill = document.getElementById('comboMeterFill');
+    const phone = document.querySelector('.phone');
+    const rewardFxLayer = document.getElementById('rewardFxLayer');
+    const comboToast = document.getElementById('comboToast');
+    const timeCountEl = document.getElementById('timeCount');
+    const swapCountEl = document.getElementById('swapCount');
+    const clearCountEl = document.getElementById('clearCount');
+
+    const W = 390;
+    const H = 560;
+    const R = 19;
+    const ROW_H = 32;
+    const COLS = 10;
+    const TOP = 14;
+    const LEFT = 16;
+    const SHOOTER = { x: 195, y: 498 };
+    const ROUND_SECONDS = 45;
+    const COMBO_WINDOW = 3;
+    const TREASURE_REWARD = 30;
+    const TREASURE_RADIUS = R * 2;
+    const TREASURE_HITS_REQUIRED = 2;
+    const colors = ['#f4f7ff', '#c28145', '#5f86df', '#ffda4d', '#78df83'];
+    const labels = ['B', 'G', 'D', 'C', 'P'];
+
+    let bubbles = [];
+    let projectile = null;
+    let currentType = 0;
+    let nextType = 1;
+    let aimX = SHOOTER.x;
+    let aimY = SHOOTER.y - 160;
+    let running = false;
+    let paused = false;
+    let timeLeft = ROUND_SECONDS;
+    let timerId = null;
+    let cleared = 0;
+    let points = 0;
+    let shots = 0;
+    let lastTick = 0;
+    let particles = [];
+    let combo = 0;
+    let comboWindowLeft = 0;
+    let treasure = { row: 2, col: 4 };
+    let treasureUnlocked = false;
+    let treasureHits = 0;
+    let tools = { time: 1, swap: 2, clear: 1 };
+
+    function fitPhone() {
+      const scale = Math.min(window.innerWidth / 390, window.innerHeight / 844, 1);
+      document.documentElement.style.setProperty('--app-scale', String(scale));
+    }
+
+    function rowOffset(row) {
+      return row % 2 ? R : 0;
+    }
+
+    function cellToXY(row, col) {
+      return {
+        x: LEFT + rowOffset(row) + col * R * 2 + R,
+        y: TOP + row * ROW_H + R
+      };
+    }
+
+    function xyToCell(x, y) {
+      const row = Math.max(0, Math.round((y - TOP - R) / ROW_H));
+      const col = Math.max(0, Math.min(COLS - 1, Math.round((x - LEFT - rowOffset(row) - R) / (R * 2))));
+      return { row, col };
+    }
+
+    function key(row, col) {
+      return `${row}:${col}`;
+    }
+
+    function isTreasureCell(row, col) {
+      if (treasureUnlocked) return false;
+      const pos = cellToXY(row, col);
+      const center = treasureCenter();
+      return Math.hypot(pos.x - center.x, pos.y - center.y) < TREASURE_RADIUS + R - 1;
+    }
+
+    function treasureCenter() {
+      const points = [
+        cellToXY(treasure.row, treasure.col),
+        cellToXY(treasure.row, treasure.col + 1),
+        cellToXY(treasure.row + 1, treasure.col),
+        cellToXY(treasure.row + 1, treasure.col + 1)
+      ];
+      return points.reduce((acc, p) => ({ x: acc.x + p.x / points.length, y: acc.y + p.y / points.length }), { x: 0, y: 0 });
+    }
+
+    function randomType() {
+      const active = Array.from(new Set(bubbles.map(b => b.type)));
+      const pool = active.length >= 3 ? active : [0, 1, 2, 3, 4];
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    function bubbleAt(row, col) {
+      return bubbles.find(b => b.row === row && b.col === col);
+    }
+
+    function neighborsOf(bubble) {
+      const even = bubble.row % 2 === 0;
+      const dirs = even
+        ? [[0,-1],[0,1],[-1,-1],[-1,0],[1,-1],[1,0]]
+        : [[0,-1],[0,1],[-1,0],[-1,1],[1,0],[1,1]];
+      return dirs
+        .map(([dr, dc]) => bubbleAt(bubble.row + dr, bubble.col + dc))
+        .filter(Boolean);
+    }
+
+    function buildBoard() {
+      bubbles = [];
+      const pattern = [
+        [0, 1, 2, 0, 1, 3, 2, 0, 4, 1],
+        [1, 0, 1, 2, 3, 2, 0, 1, 2],
+        [2, 2, 3, 3, 0, 4, 4, 1, 1, 0],
+        [4, 0, 2, 1, 3, 0, 2, 4, 3],
+        [1, 3, 1, 4, 2, 2, 3, 0, 4, 1],
+        [0, 4, 3, 2, 0, 0, 2, 3, 4],
+        [2, 1, 1, 3, 4, 4, 3, 0, 4, 2],
+        [null, 2, 3, 1, 2, 1, 0, 3, null],
+        [null, null, 4, 0, 3, 2, 1, null, null]
+      ];
+      pattern.forEach((row, r) => {
+        row.forEach((type, c) => {
+          if (type === null || c >= COLS) return;
+          if (isTreasureCell(r, c)) return;
+          const pos = cellToXY(r, c);
+          bubbles.push({ row: r, col: c, type, x: pos.x, y: pos.y, falling: 0 });
+        });
+      });
+    }
+
+    function updateTools() {
+      timeCountEl.textContent = tools.time > 0 ? String(tools.time) : '+';
+      swapCountEl.textContent = tools.swap > 0 ? String(tools.swap) : '+';
+      clearCountEl.textContent = tools.clear > 0 ? String(tools.clear) : '+';
+    }
+
+    function aimVector() {
+      const dx = aimX - SHOOTER.x;
+      const dy = aimY - SHOOTER.y;
+      const len = Math.max(1, Math.hypot(dx, dy));
+      let vx = dx / len;
+      let vy = dy / len;
+      if (vy > -.22) vy = -.22;
+      const normalized = Math.hypot(vx, vy);
+      return { vx: vx / normalized, vy: vy / normalized };
+    }
+
+    function shoot() {
+      if (!running || paused || projectile) return;
+      const { vx, vy } = aimVector();
+      projectile = {
+        x: SHOOTER.x,
+        y: SHOOTER.y - 16,
+        vx: vx * 620,
+        vy: vy * 620,
+        type: currentType
+      };
+      currentType = nextType;
+      nextType = randomType();
+      shots += 1;
+    }
+
+    function attachProjectile() {
+      if (!projectile) return;
+      let cell = xyToCell(projectile.x, projectile.y);
+      let guard = 0;
+      while ((bubbleAt(cell.row, cell.col) || isTreasureCell(cell.row, cell.col)) && guard < 40) {
+        const candidates = candidateCells(cell.row, cell.col)
+          .filter(pos => !bubbleAt(pos.row, pos.col) && !isTreasureCell(pos.row, pos.col))
+          .sort((a, b) => {
+            const pa = cellToXY(a.row, a.col);
+            const pb = cellToXY(b.row, b.col);
+            return Math.hypot(projectile.x - pa.x, projectile.y - pa.y) - Math.hypot(projectile.x - pb.x, projectile.y - pb.y);
+          });
+        if (!candidates.length) break;
+        cell = candidates[0];
+        guard += 1;
+      }
+      const pos = cellToXY(cell.row, cell.col);
+      const placed = { row: cell.row, col: cell.col, type: projectile.type, x: pos.x, y: pos.y, falling: 0, pop: 1 };
+      bubbles.push(placed);
+      projectile = null;
+      const didClear = resolveMatches(placed);
+      checkEndState();
+    }
+
+    function candidateCells(row, col) {
+      const seed = { row, col };
+      const even = row % 2 === 0;
+      const dirs = even
+        ? [[0,-1],[0,1],[-1,-1],[-1,0],[1,-1],[1,0]]
+        : [[0,-1],[0,1],[-1,0],[-1,1],[1,0],[1,1]];
+      return [seed, ...dirs.map(([dr, dc]) => ({ row: Math.max(0, row + dr), col: Math.max(0, Math.min(COLS - 1, col + dc)) }))];
+    }
+
+    function resolveMatches(start) {
+      const same = [];
+      const stack = [start];
+      const seen = new Set();
+      while (stack.length) {
+        const b = stack.pop();
+        const id = key(b.row, b.col);
+        if (seen.has(id) || b.type !== start.type) continue;
+        seen.add(id);
+        same.push(b);
+        neighborsOf(b).forEach(n => stack.push(n));
+      }
+
+      if (same.length < 3) return false;
+      combo = comboWindowLeft > 0 ? combo + 1 : 1;
+      comboWindowLeft = COMBO_WINDOW;
+      const remove = new Set(same.map(b => key(b.row, b.col)));
+      const burstOrigin = same.reduce((acc, b) => ({ x: acc.x + b.x, y: acc.y + b.y }), { x: 0, y: 0 });
+      burstOrigin.x /= same.length;
+      burstOrigin.y /= same.length;
+      bubbles = bubbles.filter(b => !remove.has(key(b.row, b.col)));
+      const floating = floatingBubbles();
+      floating.forEach(b => remove.add(key(b.row, b.col)));
+      bubbles = bubbles.filter(b => !remove.has(key(b.row, b.col)));
+      const total = remove.size;
+      const comboEarned = combo >= 2 ? Math.min(6, combo + Math.floor(floating.length / 2)) : 0;
+      cleared += total;
+      points += comboEarned;
+      pointsEl.textContent = points;
+      spawnBurst(same, floating);
+      if (comboEarned > 0) showFloatScore(burstOrigin.x, burstOrigin.y, `连击 +${comboEarned}`);
+      else showFloatScore(burstOrigin.x, burstOrigin.y, 'CLEAR');
+      if (floating.length) showFloatScore(burstOrigin.x, burstOrigin.y + 34, `掉落 x${floating.length}`);
+      showCombo(total, floating.length);
+      bumpPoints();
+      kickScreen(total >= 5 || floating.length > 0);
+      if (navigator.vibrate) navigator.vibrate(total >= 6 ? [18, 24, 18] : 18);
+      updateGoalCard();
+      return true;
+    }
+
+    function hitTreasureTarget() {
+      if (!projectile || treasureUnlocked) return;
+      projectile = null;
+      treasureHits += 1;
+      const center = treasureCenter();
+      showFloatScore(center.x, center.y, treasureHits >= TREASURE_HITS_REQUIRED ? '宝藏开启!' : `宝藏 ${treasureHits}/${TREASURE_HITS_REQUIRED}`);
+      spawnTreasureBurst(center, treasureHits >= TREASURE_HITS_REQUIRED ? 26 : 12);
+      kickScreen(true);
+      if (navigator.vibrate) navigator.vibrate(treasureHits >= TREASURE_HITS_REQUIRED ? [24, 40, 24] : 18);
+      if (treasureHits >= TREASURE_HITS_REQUIRED) unlockTreasure();
+    }
+
+    function unlockTreasure() {
+      if (treasureUnlocked) return;
+      treasureUnlocked = true;
+      points += TREASURE_REWARD;
+      pointsEl.textContent = points;
+      const center = treasureCenter();
+      showFloatScore(center.x, center.y, `宝藏 +${TREASURE_REWARD}`);
+      spawnTreasureBurst(center);
+      bumpPoints();
+      kickScreen(true);
+      if (navigator.vibrate) navigator.vibrate([24, 40, 24]);
+    }
+
+    function spawnTreasureBurst(center, count = 36) {
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 130 + Math.random() * 220;
+        particles.push({
+          x: center.x,
+          y: center.y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 80,
+          life: .72 + Math.random() * .28,
+          maxLife: 1,
+          type: 3,
+          size: 4 + Math.random() * 5
+        });
+      }
+    }
+
+    function spawnBurst(matched, floating) {
+      const source = [...matched, ...floating];
+      source.forEach((b, index) => {
+        const count = index < matched.length ? 7 : 4;
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = (index < matched.length ? 120 : 90) + Math.random() * 120;
+          particles.push({
+            x: b.x,
+            y: b.y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 40,
+            life: .52 + Math.random() * .24,
+            maxLife: .72,
+            type: b.type,
+            size: 3 + Math.random() * 4
+          });
+        }
+      });
+    }
+
+    function showFloatScore(x, y, text) {
+      const item = document.createElement('div');
+      item.className = 'float-score';
+      item.textContent = text;
+      item.style.setProperty('--x', `${x}px`);
+      item.style.setProperty('--y', `${154 + y}px`);
+      rewardFxLayer.appendChild(item);
+      window.setTimeout(() => item.remove(), 760);
+    }
+
+    function showCombo(total, floatingCount) {
+      const message = floatingCount
+        ? `PERFECT! x${total}`
+        : (combo > 1 ? `COMBO x${combo}` : `CLEAR x${total}`);
+      comboToast.textContent = message;
+      comboToast.classList.remove('is-show');
+      void comboToast.offsetWidth;
+      comboToast.classList.add('is-show');
+    }
+
+    function bumpPoints() {
+      const pointsWrap = pointsEl.parentElement;
+      pointsWrap.classList.remove('is-bump');
+      void pointsWrap.offsetWidth;
+      pointsWrap.classList.add('is-bump');
+    }
+
+    function kickScreen(strong = false) {
+      phone.classList.remove('is-shaking');
+      void phone.offsetWidth;
+      phone.classList.add('is-shaking');
+      if (strong) window.setTimeout(() => phone.classList.remove('is-shaking'), 240);
+    }
+
+    function floatingBubbles() {
+      const anchored = new Set();
+      const stack = bubbles.filter(b => b.row === 0);
+      while (stack.length) {
+        const b = stack.pop();
+        const id = key(b.row, b.col);
+        if (anchored.has(id)) continue;
+        anchored.add(id);
+        neighborsOf(b).forEach(n => stack.push(n));
+      }
+      return bubbles.filter(b => !anchored.has(key(b.row, b.col)));
+    }
+
+    function updateProjectile(dt) {
+      if (!projectile) return;
+      projectile.x += projectile.vx * dt;
+      projectile.y += projectile.vy * dt;
+      if (projectile.x < R) {
+        projectile.x = R;
+        projectile.vx = Math.abs(projectile.vx);
+      }
+      if (projectile.x > W - R) {
+        projectile.x = W - R;
+        projectile.vx = -Math.abs(projectile.vx);
+      }
+      if (projectile.y <= R + 2) {
+        attachProjectile();
+        return;
+      }
+      const hit = bubbles.some(b => Math.hypot(projectile.x - b.x, projectile.y - b.y) <= R * 2 - 1);
+      const t = treasureCenter();
+      const hitTreasure = Math.hypot(projectile.x - t.x, projectile.y - t.y) <= TREASURE_RADIUS + R - 2;
+      if (hit) attachProjectile();
+      else if (hitTreasure) hitTreasureTarget();
+    }
+
+    function checkEndState() {
+      if (!running) return;
+      if (!treasureUnlocked && treasureCenter().y > 420) showResult(false, 'line');
+      if (bubbles.some(b => b.y > 420)) showResult(false, 'line');
+    }
+
+    function drawBubble(x, y, type, scale = 1) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(scale, scale);
+      ctx.fillStyle = colors[type];
+      ctx.beginPath();
+      ctx.arc(0, 0, R, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,.17)';
+      ctx.beginPath();
+      ctx.arc(0, R * .16, R * .78, 0, Math.PI);
+      ctx.fill();
+      ctx.fillStyle = type === 0 ? '#b84444' : '#fff';
+      ctx.font = '900 13px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(labels[type], 0, -1);
+      ctx.restore();
+    }
+
+    function updateParticles(dt) {
+      particles.forEach(p => {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 380 * dt;
+        p.life -= dt;
+      });
+      particles = particles.filter(p => p.life > 0);
+    }
+
+    function drawParticles() {
+      particles.forEach(p => {
+        const alpha = Math.max(0, Math.min(1, p.life / p.maxLife));
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = colors[p.type];
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+    }
+
+    function drawAim() {
+      if (!running || paused || projectile) return;
+      const { vx, vy } = aimVector();
+      let x = SHOOTER.x;
+      let y = SHOOTER.y - 16;
+      let dx = vx;
+      let dy = vy;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,.46)';
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      for (let i = 0; i < 80; i++) {
+        x += dx * 8;
+        y += dy * 8;
+        if (x < R || x > W - R) dx *= -1;
+        if (y < 12) break;
+        if (i % 2 === 0) ctx.lineTo(x, y);
+        else ctx.moveTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawScene() {
+      ctx.clearRect(0, 0, W, H);
+      const sky = ctx.createLinearGradient(0, 0, 0, H);
+      sky.addColorStop(0, 'rgba(8,25,70,.64)');
+      sky.addColorStop(.58, 'rgba(8,35,76,.22)');
+      sky.addColorStop(1, 'rgba(30,110,44,.15)');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.strokeStyle = 'rgba(255,255,255,.16)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 430);
+      ctx.lineTo(W, 430);
+      ctx.stroke();
+      bubbles.forEach(b => drawBubble(b.x, b.y, b.type, b.pop ? 1 + b.pop * .12 : 1));
+      drawTreasure();
+      bubbles.forEach(b => {
+        if (b.pop) b.pop *= .84;
+      });
+      drawParticles();
+      drawAim();
+      if (projectile) drawBubble(projectile.x, projectile.y, projectile.type, 1.04);
+      drawShooter();
+    }
+
+    function drawTreasure() {
+      if (treasureUnlocked) return;
+      const { x, y } = treasureCenter();
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.fillStyle = 'rgba(255,222,85,.18)';
+      ctx.beginPath();
+      ctx.arc(0, 0, TREASURE_RADIUS + 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = treasureHits ? 'rgba(255,222,85,.9)' : 'rgba(255,255,255,.52)';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.arc(0, 0, TREASURE_RADIUS + 5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = '#cda447';
+      ctx.beginPath();
+      ctx.arc(0, 0, TREASURE_RADIUS, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#8a6b2a';
+      ctx.beginPath();
+      ctx.arc(0, -10, TREASURE_RADIUS * .62, Math.PI, 0);
+      ctx.lineTo(TREASURE_RADIUS * .62, -2);
+      ctx.lineTo(-TREASURE_RADIUS * .62, -2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = '900 16px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('P', 0, 4);
+      ctx.fillStyle = 'rgba(255,255,255,.94)';
+      ctx.font = '900 11px Inter, sans-serif';
+      ctx.fillText(`${treasureHits}/${TREASURE_HITS_REQUIRED}`, 0, TREASURE_RADIUS + 13);
+      ctx.restore();
+    }
+
+    function drawShooter() {
+      ctx.save();
+      ctx.translate(SHOOTER.x, SHOOTER.y);
+      ctx.fillStyle = 'rgba(255,255,255,.32)';
+      ctx.beginPath();
+      ctx.roundRect(-38, 18, 76, 14, 999);
+      ctx.fill();
+      ctx.restore();
+      drawBubble(SHOOTER.x, SHOOTER.y - 18, currentType, 1.18);
+    }
+
+    function tick(now) {
+      if (!lastTick) lastTick = now;
+      const dt = Math.min((now - lastTick) / 1000, .032);
+      lastTick = now;
+      if (running && !paused) {
+        updateProjectile(dt);
+        updateParticles(dt);
+        if (comboWindowLeft > 0) {
+          comboWindowLeft = Math.max(0, comboWindowLeft - dt);
+          if (comboWindowLeft === 0) combo = 0;
+          updateGoalCard();
+        }
+      }
+      drawScene();
+      requestAnimationFrame(tick);
+    }
+
+    function updateTimer() {
+      const m = Math.floor(timeLeft / 60);
+      const s = String(timeLeft % 60).padStart(2, '0');
+      timerEl.textContent = `${m}:${s}`;
+    }
+
+    function updateGoalCard() {
+      if (comboWindowLeft <= 0) {
+        goalText.textContent = '连击拿 points';
+        comboMeterFill.style.width = '0%';
+        return;
+      }
+      const width = Math.max(0, Math.min(100, comboWindowLeft / COMBO_WINDOW * 100));
+      comboMeterFill.style.width = `${width}%`;
+      goalText.textContent = combo >= 2 ? `COMBO x${combo}` : '连击拿 points';
+    }
+
+    function startTimer() {
+      stopTimer();
+      timerId = window.setInterval(() => {
+        if (!running || paused) return;
+        timeLeft -= 1;
+        updateTimer();
+        if (timeLeft <= 0) showResult(points > 0, treasureUnlocked ? 'treasure' : 'noTreasure');
+      }, 1000);
+    }
+
+    function stopTimer() {
+      if (timerId) window.clearInterval(timerId);
+      timerId = null;
+    }
+
+    function resetGame() {
+      treasure = { row: 2, col: 4 };
+      treasureUnlocked = false;
+      treasureHits = 0;
+      buildBoard();
+      projectile = null;
+      currentType = randomType();
+      nextType = randomType();
+      aimX = SHOOTER.x;
+      aimY = SHOOTER.y - 160;
+      running = true;
+      paused = false;
+      timeLeft = ROUND_SECONDS;
+      cleared = 0;
+      points = 0;
+      shots = 0;
+      combo = 0;
+      comboWindowLeft = 0;
+      tools = { time: 1, swap: 2, clear: 1 };
+      particles = [];
+      lastTick = 0;
+      pointsEl.textContent = '0';
+      resultModal.classList.remove('is-open');
+      pauseModal.classList.remove('is-open');
+      home.classList.remove('is-open');
+      updateTools();
+      updateTimer();
+      updateGoalCard();
+      startTimer();
+    }
+
+    function showResult(success, reason = 'line') {
+      if (!running) return;
+      running = false;
+      stopTimer();
+      const hasTreasure = reason === 'treasure';
+      resultTitle.textContent = success ? (hasTreasure ? '挑战成功' : '再接再厉') : '挑战失败';
+      resultDesc.textContent = success
+        ? (hasTreasure ? `拿到宝藏大奖，本局累计 ${points} points` : `没拿到大奖，本局累计 ${points} points`)
+        : (reason === 'noTreasure' ? '没拿到大奖，再挑战一次' : '泡泡压到底线，挑战失败');
+      resultCard.classList.toggle('result-success', success);
+      resultCard.classList.toggle('result-failure', !success);
+      resultArt.src = success ? './assets/modal/challenge-success.png' : './assets/modal/challenge-failure.png';
+      benefitValue.textContent = String(points);
+      resultModal.classList.add('is-open');
+    }
+
+    function bindPress(el, fn) {
+      el.addEventListener('pointerdown', event => {
+        event.preventDefault();
+        fn(event);
+      }, { passive: false });
+    }
+
+    function updateAim(event) {
+      const rect = arenaWrap.getBoundingClientRect();
+      aimX = Math.max(14, Math.min(W - 14, (event.clientX - rect.left) / rect.width * W));
+      aimY = Math.max(20, Math.min(SHOOTER.y - 34, (event.clientY - rect.top) / rect.height * H));
+    }
+
+    arenaWrap.addEventListener('pointermove', event => {
+      event.preventDefault();
+      updateAim(event);
+    }, { passive: false });
+
+    arenaWrap.addEventListener('pointerdown', event => {
+      event.preventDefault();
+      updateAim(event);
+    }, { passive: false });
+
+    arenaWrap.addEventListener('pointerup', event => {
+      event.preventDefault();
+      updateAim(event);
+      shoot();
+    }, { passive: false });
+
+    bindPress(document.getElementById('startBtn'), resetGame);
+    bindPress(document.getElementById('againBtn'), resetGame);
+    bindPress(document.getElementById('pauseBtn'), () => {
+      if (!running) return;
+      paused = true;
+      pauseModal.classList.add('is-open');
+    });
+    bindPress(document.getElementById('resumeBtn'), () => {
+      paused = false;
+      pauseModal.classList.remove('is-open');
+    });
+    bindPress(document.getElementById('giveUpBtn'), () => {
+      running = false;
+      paused = false;
+      stopTimer();
+      pauseModal.classList.remove('is-open');
+      home.classList.add('is-open');
+    });
+    bindPress(document.getElementById('resultCloseBtn'), () => {
+      resultModal.classList.remove('is-open');
+      home.classList.add('is-open');
+    });
+    bindPress(document.getElementById('timeTool'), () => {
+      if (!running || paused || tools.time <= 0) return;
+      tools.time -= 1;
+      timeLeft += 5;
+      updateTimer();
+      updateTools();
+      showFloatScore(195, 382, '+5s');
+    });
+    bindPress(document.getElementById('swapTool'), () => {
+      if (!running || paused || tools.swap <= 0 || projectile) return;
+      tools.swap -= 1;
+      currentType = nextType;
+      nextType = randomType();
+      updateTools();
+      showFloatScore(195, 382, '换球');
+    });
+    bindPress(document.getElementById('clearTool'), () => {
+      if (!running || paused || tools.clear <= 0) return;
+      const target = bubbles.find(b => b.type === currentType && !isTreasureCell(b.row, b.col));
+      if (!target) return;
+      tools.clear -= 1;
+      bubbles = bubbles.filter(b => b !== target);
+      spawnBurst([target], []);
+      showFloatScore(target.x, target.y, '清除');
+      updateTools();
+      checkEndState();
+    });
+
+    window.addEventListener('resize', fitPhone);
+    window.addEventListener('orientationchange', () => window.setTimeout(fitPhone, 120));
+
+    fitPhone();
+    buildBoard();
+    updateTools();
+    updateTimer();
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
