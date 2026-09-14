@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="在 390 × 844 的手机屏幕里，直接体验三消游戏。支持点击、道具、暂停与重新开始。">
+  <meta name="theme-color" content="#f3f2ee">
+  <title>三消游戏 · 手机演示</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; }
+    body { color: #292c29; background: #f3f2ee; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif; }
+    .demo { height: 100%; height: 100dvh; min-height: 240px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+    header { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 16px 12px 8px; }
+    h1 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: .04em; }
+    .size { border: 1px solid #d9dbd3; border-radius: 6px; padding: 4px 7px; font-size: 10px; color: #666d61; font-variant-numeric: tabular-nums; }
+    .stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+    .phone { position: absolute; left: 50%; top: 50%; width: 410px; height: 864px; padding: 10px; border-radius: 54px; background: linear-gradient(125deg, #494b49, #171917 30%, #353835 72%, #151715); box-shadow: inset 0 0 0 1px #777b72, inset 0 0 0 3px #2a2c29, 0 15px 30px -14px #292d2955; transform: translate(-50%, -50%) scale(var(--phone-scale, .5)); }
+    .phone::before, .phone::after { content: ""; position: absolute; width: 3px; border-radius: 2px; background: #464a44; }
+    .phone::before { left: -3px; top: 150px; height: 55px; box-shadow: 0 69px #464a44; }
+    .phone::after { right: -3px; top: 180px; height: 85px; }
+    .screen { position: relative; width: 390px; height: 844px; border-radius: 44px; overflow: hidden; background: #e9e6dc; isolation: isolate; }
+    iframe { display: block; width: 390px; height: 844px; border: 0; background: #e9e6dc; }
+    .island { position: absolute; z-index: 2; top: 11px; left: 50%; transform: translateX(-50%); width: 108px; height: 28px; border-radius: 18px; background: #141614; box-shadow: inset 0 1px 1px #000; pointer-events: none; }
+    .island::after { content: ""; position: absolute; right: 9px; top: 9px; width: 10px; height: 10px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #263243, #0b0e13 65%); }
+    .home { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 128px; height: 5px; border-radius: 4px; background: #222621; opacity: .85; pointer-events: none; }
+    footer { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; padding: 8px 12px 14px; }
+    button, a { font: inherit; font-size: 12px; text-decoration: none; padding: 9px 13px; border: 1px solid #d8dbd3; border-radius: 9px; background: #ffffffa8; color: #40473d; cursor: pointer; }
+    button:hover, a:hover { background: #fff; border-color: #adb6a4; }
+    button:focus-visible, a:focus-visible { outline: 2px solid #52773a; outline-offset: 3px; }
+    .hint { font-size: 11px; color: #697263; margin-right: 5px; }
+    #notice { display: none; position: absolute; z-index: 3; bottom: 34px; left: 16px; right: 16px; border-radius: 12px; background: #fff; color: #42483e; padding: 14px; font-size: 14px; box-shadow: 0 3px 20px #0002; }
+    #notice p { margin: 0 0 10px; }
+    #notice a { display: inline-block; }
+    #notice button { float: right; }
+    noscript { position: fixed; inset: 0; z-index: 10; padding: 24px; background: #f3f2ee; }
+    @media (max-width: 440px) { header { padding-top: 10px; } .hint { display: none; } footer { padding-bottom: 10px; } }
+    @media (max-height: 500px) { header { padding: 6px; } footer { padding: 6px; } .hint { display: none; } button, a { padding: 6px 10px; } }
+  </style>
+</head>
+<body>
+  <main class="demo">
+    <header><h1>三消游戏 · 手机演示</h1><span class="size">390 × 844</span></header>
+    <section class="stage" id="stage" aria-label="可交互手机演示">
+      <div class="phone" id="phone">
+        <div class="screen">
+          <iframe id="game" title="三消游戏，390 × 844 手机屏幕" width="390" height="844" allow="autoplay; fullscreen" allowfullscreen></iframe>
+          <div class="island" aria-hidden="true"></div>
+          <div class="home" aria-hidden="true"></div>
+          <div id="notice" role="status"><p>游戏加载时间较长，可以重新加载，或打开原页面体验。</p><a href="https://nevdis88-bit.github.io/nevdis-game-studio/match3-interaction/" target="_blank" rel="noopener noreferrer">打开原页面 ↗</a><button id="dismiss" type="button">关闭</button></div>
+        </div>
+      </div>
+    </section>
+    <footer>
+      <span class="hint">点击手机内的物品开始体验</span>
+      <button id="restart" type="button">↻ 重新开始</button>
+      <a href="https://nevdis88-bit.github.io/nevdis-game-studio/match3-interaction/" target="_blank" rel="noopener noreferrer">打开原页面 ↗</a>
+    </footer>
+  </main>
+  <noscript>请启用 JavaScript，以运行手机演示和游戏。</noscript>
+  <script>
+    const gameURL = 'https://nevdis88-bit.github.io/nevdis-game-studio/match3-interaction/';
+    const stage = document.getElementById('stage');
+    const phone = document.getElementById('phone');
+    const game = document.getElementById('game');
+    const notice = document.getElementById('notice');
+    let loadingTimer;
+    function fitPhone() {
+      const scale = Math.max(.1, Math.min(1, (stage.clientWidth - 28) / 410, (stage.clientHeight - 24) / 864));
+      phone.style.setProperty('--phone-scale', String(scale));
+    }
+    function startGame() {
+      clearTimeout(loadingTimer);
+      notice.style.display = 'none';
+      loadingTimer = setTimeout(() => { notice.style.display = 'block'; }, 20000);
+      // Navigating again restarts the game and stops its previous timer/audio.
+      game.src = gameURL;
+    }
+    game.addEventListener('load', () => { clearTimeout(loadingTimer); notice.style.display = 'none'; });
+    document.getElementById('restart').addEventListener('click', startGame);
+    document.getElementById('dismiss').addEventListener('click', () => { notice.style.display = 'none'; });
+    new ResizeObserver(fitPhone).observe(stage);
+    window.addEventListener('resize', fitPhone);
+    fitPhone();
+    startGame();
+  </script>
+</body>
+</html>
