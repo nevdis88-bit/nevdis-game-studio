@@ -27,9 +27,13 @@ try {
   storage = { getItem: key => local.getItem(prefix + key), setItem: (key, value) => local.setItem(prefix + key, value) };
 } catch {}
 const store=new ActivityStore(storage);
-// A fresh demo page starts with three plays; earned coins and settings remain.
+// Every demo page load starts a fresh activity; keep only identity and settings.
 if (new URLSearchParams(location.search).get('demo') === '1') {
-  store.demo({ freePlays: ACTIVITY.dailyPlays, extraPlays: 0, adsUsed: 0 });
+  store.demo({
+    freePlays: ACTIVITY.dailyPlays, extraPlays: 0, adsUsed: 0,
+    earnedToday: 0, balance: 0, bonusClaimed: false,
+    records: [], transactions: [], activeRun: null,
+  });
 }
 const ui=new ActivityUI(store);
 const scene=new GameScene({ready:()=>ui.onReady(),hud:(c,s,l)=>ui.updateHud(c,s,l),ended:(c,g,r)=>ui.ended(c,g,r)});
