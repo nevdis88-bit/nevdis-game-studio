@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GameScene } from './scenes/GameScene';
 import { ActivityStore } from './game/ActivityStore';
+import { ACTIVITY } from './config/ActivityConfig';
 import { ActivityUI } from './ui';
 import './style.css';
 await Promise.all([document.fonts.load('800 48px Barlow'), document.fonts.load('400 15px TikTok'), document.fonts.load('700 24px TikTok')]);
@@ -22,7 +23,12 @@ try {
   const prefix = params.get('demo') === '1' && params.get('qa') === '1' ? 'qa:' : '';
   storage = { getItem: key => local.getItem(prefix + key), setItem: (key, value) => local.setItem(prefix + key, value) };
 } catch {}
-const store=new ActivityStore(storage), ui=new ActivityUI(store);
+const store=new ActivityStore(storage);
+// A fresh demo page starts with three plays; earned coins and settings remain.
+if (new URLSearchParams(location.search).get('demo') === '1') {
+  store.demo({ freePlays: ACTIVITY.dailyPlays, extraPlays: 0, adsUsed: 0 });
+}
+const ui=new ActivityUI(store);
 const scene=new GameScene({ready:()=>ui.onReady(),hud:(c,s,l)=>ui.updateHud(c,s,l),ended:(c,g,r)=>ui.ended(c,g,r)});
 ui.attach(scene);
 const game=new Phaser.Game({type:Phaser.AUTO,parent:'game',width:780,height:1688,backgroundColor:'#000e3b',scale:{mode:Phaser.Scale.NONE},render:{antialias:true,roundPixels:false,powerPreference:'high-performance'},input:{activePointers:2},scene:[scene]});
