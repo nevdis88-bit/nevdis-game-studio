@@ -22,3 +22,5 @@ This is a frontend prototype. Coins and advertisements are simulated.
 In demo mode, reloading restores 3 plays and resets the ad counter. Coins, daily reward progress, and settings are retained. Ad and invite tasks can still grant extra plays during the session.
 
 The ball stands upright without a tee. A separate transparent boot sprite appears only when kicking, then fades out. The upper sock blends into the scene.
+
+The phone presentation has no outer gutter or native-size limit. Use an embed aspect ratio of 414:868 (approximately 1:2.1) for an edge-to-edge frame with no distortion.

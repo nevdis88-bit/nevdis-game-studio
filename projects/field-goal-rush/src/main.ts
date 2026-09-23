@@ -6,13 +6,16 @@ import { ActivityUI } from './ui';
 import './style.css';
 await Promise.all([document.fonts.load('800 48px Barlow'), document.fonts.load('400 15px TikTok'), document.fonts.load('700 24px TikTok')]);
 const presentation = new URLSearchParams(location.search).get('embed') === '1';
+document.documentElement.classList.toggle('presentation-mode', presentation);
 document.body.classList.toggle('presentation-mode', presentation);
 const viewport=document.querySelector<HTMLElement>('#viewport')!, device=document.querySelector<HTMLElement>('#device')!;
 const phoneShell = document.querySelector<HTMLElement>('#phone-shell')!;
 function resize(){
   const width = presentation ? 414 : 390, height = presentation ? 868 : 844;
-  const margin = presentation ? 28 : 0;
-  const scale=Math.max(.1,Math.min((innerWidth-margin)/width,(innerHeight-margin)/height,1));
+  // Fill the embed's available size without a gutter or native-size ceiling.
+  const scale = presentation
+    ? Math.min(innerWidth / width, innerHeight / height)
+    : Math.max(.1, Math.min(innerWidth / width, innerHeight / height, 1));
   (presentation ? phoneShell : device).style.transform=`scale(${scale})`;
   viewport.style.width=`${width*scale}px`;viewport.style.height=`${height*scale}px`;
 }
