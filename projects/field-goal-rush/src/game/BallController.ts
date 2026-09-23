@@ -37,9 +37,11 @@ export class BallController {
       const ctx = texture.context;
       const gradient = ctx.createLinearGradient(0, 0, 0, 256);
       gradient.addColorStop(0, 'rgba(255,255,255,0)');
-      gradient.addColorStop(TUNING.footFadeStart, 'rgba(255,255,255,0)');
-      gradient.addColorStop((TUNING.footFadeStart + TUNING.footFadeEnd) / 2, 'rgba(255,255,255,.5)');
-      gradient.addColorStop(TUNING.footFadeEnd, '#fff');
+      // Smoothstep keeps both ends of the fade soft, even on the solid sock.
+      for (let i = 0; i <= 12; i++) {
+        const t = i / 12, alpha = t * t * (3 - 2 * t);
+        gradient.addColorStop(TUNING.footFadeStart + t * (TUNING.footFadeEnd - TUNING.footFadeStart), `rgba(255,255,255,${alpha})`);
+      }
       gradient.addColorStop(1, '#fff');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, 16, 256);
@@ -96,18 +98,18 @@ export class BallController {
   kick(targetX: number, options: FlightOptions, complete: () => void, onContact: () => void) {
     this.phase = 'windup'; this.grounded = true;
     const x = this.sprite.x, y = this.sprite.y;
-    this.foot.setPosition(x - 220, y + 175).setScale(this.footBaseScale)
-      .setRotation(-.13).setAlpha(0).setVisible(true);
+    this.foot.setPosition(x - 230, y + 180).setScale(this.footBaseScale)
+      .setRotation(-.18).setAlpha(0).setVisible(true);
     this.syncFootFade();
     this.scene.tweens.add({
-      targets: this.foot, x: x - 172, y: y + 143, rotation: -.10, alpha: 1,
-      duration: TUNING.kickWindupDuration, ease: 'Sine.Out',
+      targets: this.foot, x: x - 182, y: y + 144, rotation: -.13, alpha: 1,
+      duration: TUNING.kickWindupDuration, ease: 'Quad.Out',
       onUpdate: () => this.syncFootFade(),
       onComplete: () => {
         this.phase = 'contact';
         this.scene.tweens.add({
-          targets: this.foot, x: x - 48, y: y + 48, rotation: -.08,
-          duration: TUNING.kickSwingDuration, ease: 'Quad.In',
+          targets: this.foot, x: x - 36, y: y + 40, rotation: -.07,
+          duration: TUNING.kickSwingDuration, ease: 'Cubic.In',
           onUpdate: () => this.syncFootFade(),
           onComplete: () => {
             this.grounded = false; this.phase = 'flight';
@@ -117,11 +119,11 @@ export class BallController {
             this.scene.tweens.add({ targets: this.shadow, alpha: 0, duration: 100 });
             // Only the foot follows through; the ball has already launched.
             this.scene.tweens.add({
-              targets: this.foot, x: x + 4, y: y - 42, rotation: -.23,
-              duration: 100, ease: 'Sine.Out', onUpdate: () => this.syncFootFade(),
+              targets: this.foot, x: x + 16, y: y - 60, rotation: -.27,
+              duration: TUNING.kickFollowThroughDuration, ease: 'Cubic.Out', onUpdate: () => this.syncFootFade(),
               onComplete: () => this.scene.tweens.add({
                 targets: this.foot, x: x - 245, y: y + 125,
-                rotation: -.06, alpha: 0, duration: 170, onComplete: () => this.foot.setVisible(false), ease: 'Sine.In',
+                rotation: -.06, alpha: 0, duration: TUNING.kickRetractDuration, onComplete: () => this.foot.setVisible(false), ease: 'Quad.In',
                 onUpdate: () => this.syncFootFade(),
               }),
             });

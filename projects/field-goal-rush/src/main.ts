@@ -38,6 +38,7 @@ if (new URLSearchParams(location.search).get('demo') === '1') {
 const ui=new ActivityUI(store);
 const scene=new GameScene({ready:()=>ui.onReady(),hud:(c,s,l)=>ui.updateHud(c,s,l),ended:(c,g,r)=>ui.ended(c,g,r)});
 ui.attach(scene);
-const game=new Phaser.Game({type:Phaser.AUTO,parent:'game',width:780,height:1688,backgroundColor:'#000e3b',scale:{mode:Phaser.Scale.NONE},render:{antialias:true,roundPixels:false,powerPreference:'high-performance'},input:{activePointers:2},scene:[scene]});
+// Kicks use native canvas input; leave Phaser keyboard input enabled for Space.
+const game=new Phaser.Game({type:Phaser.AUTO,parent:'game',width:780,height:1688,backgroundColor:'#000e3b',scale:{mode:Phaser.Scale.NONE},render:{antialias:true,roundPixels:false,powerPreference:'high-performance'},input:{mouse:false,touch:false,windowEvents:false},scene:[scene]});
 if(import.meta.env.DEV)Object.assign(window,{__FIELD_GOAL_GAME__:game});
 if(import.meta.hot)import.meta.hot.dispose(()=>{window.removeEventListener('resize',resize);game.destroy(true);});

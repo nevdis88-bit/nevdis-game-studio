@@ -7,6 +7,7 @@ import { createRound, goalPosition, aimPosition, RUN_RULES, type Round } from '.
 import { newRun, recordKick, readBest, saveBest, runEndReason, type RunEndReason } from '../game/RunState';
 import { RunClock } from '../game/RunClock';
 import { StadiumAmbience } from '../game/StadiumAmbience';
+import { bindKickInput } from '../game/KickInput';
 
 export interface GameHooks {
   ready(): void;
@@ -49,6 +50,7 @@ export class GameScene extends Phaser.Scene {
   private playing = false;
   private haptics = false;
   private resetTimer?: Phaser.Time.TimerEvent;
+  private unbindKickInput?: () => void;
 
   constructor(private hooks: GameHooks) { super('Game'); }
 
@@ -102,7 +104,7 @@ export class GameScene extends Phaser.Scene {
     this.music = this.sound.add('music');
     this.music.addMarker({ name: 'loop', start: 0, duration: 30, config: { loop: true, volume: .28 } });
     this.refreshHud();
-    this.input.on('pointerdown', this.onTap, this);
+    this.unbindKickInput = bindKickInput(this.game.canvas, () => this.onTap());
     this.input.keyboard?.on('keydown-SPACE', this.onSpace, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.cleanup, this);
     this.game.events.on(Phaser.Core.Events.BLUR, this.onBlur, this);
@@ -187,7 +189,7 @@ export class GameScene extends Phaser.Scene {
   private refreshClock() {
     this.hooks.hud(this.run.score, Math.ceil(this.clock.remainingMs / 1000), this.run.lives);
     if (import.meta.env.DEV) {
-      Object.assign(this.game.canvas.dataset, { state: this.state, paused: String(this.paused), animationsPaused: String(this.tweens.paused), kickPhase: this.ball?.phase ?? 'ready', footVisible: String(!!this.ball?.foot.visible && this.ball.foot.alpha > .01), ballY: String(this.ball?.sprite.y ?? 0) });
+      Object.assign(this.game.canvas.dataset, { state: this.state, paused: String(this.paused), animationsPaused: String(this.tweens.paused), kicks: String(this.kickCount), kickPhase: this.ball?.phase ?? 'ready', footVisible: String(!!this.ball?.foot.visible && this.ball.foot.alpha > .01), ballY: String(this.ball?.sprite.y ?? 0) });
     }
   }
 
@@ -250,8 +252,8 @@ export class GameScene extends Phaser.Scene {
     if (!music) this.music?.pause(); else if (this.playing) this.startMusic();
   }
 
-  private onTap(pointer: Phaser.Input.Pointer) {
-    if (!this.playing || this.paused || this.state === 'GAME_OVER' || pointer.y < 350) return;
+  private onTap() {
+    if (!this.playing || this.paused || this.state !== 'AIMING') return;
     this.effects.unlockAudio(); this.kick();
   }
   private onSpace(event: KeyboardEvent) {
@@ -477,7 +479,7 @@ export class GameScene extends Phaser.Scene {
   private cleanup() {
     this.resetTimer?.remove(false);
     this.resetTimer = undefined;
-    this.input.off('pointerdown', this.onTap, this);
+    this.unbindKickInput?.(); this.unbindKickInput = undefined;
     this.input.keyboard?.off('keydown-SPACE', this.onSpace, this);
     this.game.events.off(Phaser.Core.Events.BLUR, this.onBlur, this);
     this.game.events.off(Phaser.Core.Events.HIDDEN, this.onBlur, this);

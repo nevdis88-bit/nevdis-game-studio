@@ -7,7 +7,7 @@
     "dev": "vite --host 127.0.0.1 --port 5174 --strictPort",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "node --experimental-strip-types --test tests/game.test.ts tests/activity.test.ts"
+    "test": "node --experimental-strip-types --test tests/game.test.ts tests/activity.test.ts tests/input.test.ts"
   },
   "dependencies": {
     "phaser": "3.90.0"
