@@ -4,11 +4,11 @@ import { flightPose, type FlightOptions } from './math';
 
 export class BallController {
   readonly sprite: Phaser.GameObjects.Image;
-  readonly hand: Phaser.GameObjects.Image;
-  private readonly handFade: Phaser.GameObjects.Image;
-  phase: 'held' | 'windup' | 'release' | 'flight' = 'held';
-  private held = true;
-  private handBaseScale = 1;
+  readonly foot: Phaser.GameObjects.Image;
+  private readonly footFade: Phaser.GameObjects.Image;
+  phase: 'ready' | 'windup' | 'contact' | 'flight' = 'ready';
+  private grounded = true;
+  private footBaseScale = 1;
   private readonly trail: Phaser.GameObjects.Graphics;
   private readonly halo: Phaser.GameObjects.Image;
   private readonly shadow: Phaser.GameObjects.Ellipse;
@@ -23,32 +23,31 @@ export class BallController {
   private startX = TUNING.ballStartX as number;
 
   constructor(private scene: Phaser.Scene) {
-    this.shadow = scene.add.ellipse(TUNING.ballStartX, TUNING.ballStartY + 121, 190, 28, 0x00130b, .5).setDepth(3);
+    this.shadow = scene.add.ellipse(TUNING.ballStartX, TUNING.ballStartY + 165, 160, 25, 0x00130b, .5).setDepth(3);
     this.trail = scene.add.graphics().setDepth(6);
     this.halo = scene.add.image(390, 1360, 'glow').setTint(0x4fffee).setBlendMode(Phaser.BlendModes.ADD).setDepth(7);
     this.groundLight = scene.add.image(390, TUNING.ballStartY + 132, 'glow').setTint(0x28ffd3).setDisplaySize(340, 108).setBlendMode(Phaser.BlendModes.ADD).setDepth(3);
     this.rim = scene.add.image(390, 1360, 'football').setTintFill(0x62ffdb).setBlendMode(Phaser.BlendModes.ADD).setDepth(7);
     this.sprite = scene.add.image(390, 1360, 'football').setDepth(8);
-    this.hand = scene.add.image(390, 1360, 'throwing-hand').setOrigin(.686, .35).setDepth(9);
-    // Fade only the lower sleeve. A local alpha mask follows the throwing rig,
-    // so its transparent end cannot reveal a rectangular sprite edge in motion.
-    const fadeKey = 'throwing-hand-alpha-mask';
+    this.foot = scene.add.image(390, 1360, 'kicking-foot').setOrigin(.94, .90).setDepth(9);
+    // Fade the upper sock in sprite space; the mask follows every kick pose.
+    const fadeKey = 'kicking-foot-alpha-mask';
     if (!scene.textures.exists(fadeKey)) {
       const texture = scene.textures.createCanvas(fadeKey, 16, 256)!;
       const ctx = texture.context;
       const gradient = ctx.createLinearGradient(0, 0, 0, 256);
-      gradient.addColorStop(0, '#fff');
-      gradient.addColorStop(TUNING.handFadeStart, '#fff');
-      gradient.addColorStop((TUNING.handFadeStart + TUNING.handFadeEnd) / 2, 'rgba(255,255,255,.5)');
-      gradient.addColorStop(TUNING.handFadeEnd, 'rgba(255,255,255,0)');
-      gradient.addColorStop(1, 'rgba(255,255,255,0)');
+      gradient.addColorStop(0, 'rgba(255,255,255,0)');
+      gradient.addColorStop(TUNING.footFadeStart, 'rgba(255,255,255,0)');
+      gradient.addColorStop((TUNING.footFadeStart + TUNING.footFadeEnd) / 2, 'rgba(255,255,255,.5)');
+      gradient.addColorStop(TUNING.footFadeEnd, '#fff');
+      gradient.addColorStop(1, '#fff');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, 16, 256);
       texture.refresh();
     }
-    this.handFade = scene.make.image({ key: fadeKey, add: false }).setOrigin(.686, .35);
-    this.hand.setMask(this.handFade.createBitmapMask());
-    this.handBaseScale = TUNING.handSize / this.hand.height;
+    this.footFade = scene.make.image({ key: fadeKey, add: false }).setOrigin(.94, .90);
+    this.foot.setMask(this.footFade.createBitmapMask());
+    this.footBaseScale = TUNING.footSize / this.foot.height;
     this.baseScale = TUNING.ballHeight / this.sprite.height;
     this.reset();
   }
@@ -56,83 +55,80 @@ export class BallController {
   reset() {
     this.pointCount = 0;
     this.progress.t = 0;
-    this.held = true; this.phase = 'held';
+    this.grounded = true; this.phase = 'ready';
     this.trail.clear();
     this.sprite.setPosition(this.startX, TUNING.ballStartY).setScale(this.baseScale * TUNING.ballStartScale).setRotation(0).setAlpha(1).setDepth(8);
     this.halo.setPosition(this.startX, TUNING.ballStartY).setDisplaySize(310, 370).setAlpha(.36);
     this.shadow.setX(this.startX).setAlpha(.16).setScale(1);
     this.groundLight.setPosition(this.startX, TUNING.ballStartY + 132).setVisible(true);
     this.rim.setPosition(this.startX, TUNING.ballStartY).setScale(this.baseScale * 1.04).setAlpha(.22).setDepth(7);
-    this.hand.setAlpha(1).setVisible(true); this.followHeldHand();
+    this.foot.setAlpha(0).setVisible(false); this.placeReadyFoot();
   }
 
   updateLighting(time: number, ready: boolean, gold: boolean) {
     if (ready) {
-      // Absolute offsets avoid drift; the scene's visual clock freezes in the background.
-      const breath = .5 - .5 * Math.cos(time * Math.PI * 2 / TUNING.ballIdlePeriod);
-      this.sprite.setY(TUNING.ballStartY - breath * TUNING.ballIdleLift)
-        .setScale(this.baseScale * TUNING.ballStartScale * (1 + breath * TUNING.ballIdleScale));
-      this.shadow.setScale(1 - breath * .035).setAlpha(.16 - breath * .02);
-      this.followHeldHand();
+      // The upright ball stays planted until the boot makes contact.
+      this.sprite.setY(TUNING.ballStartY).setScale(this.baseScale * TUNING.ballStartScale);
+      this.shadow.setScale(1).setAlpha(.22);
+      this.foot.setVisible(false); this.placeReadyFoot();
     }
     const breathing = .5 + .5 * Math.sin(time * 2.6);
     const glowColor = gold ? 0xffdd72 : 0x4fffe0;
     this.rim.setPosition(this.sprite.x, this.sprite.y).setRotation(this.sprite.rotation)
       .setScale(this.sprite.scaleX * 1.045, this.sprite.scaleY * 1.025).setAlpha(this.sprite.alpha * (.16 + breathing * .14)).setTintFill(glowColor);
     this.groundLight.setX(this.sprite.x).setVisible(ready).setAlpha(.48 + breathing * .18).setTint(glowColor);
-    if (this.held) this.halo.setPosition(this.sprite.x, this.sprite.y).setDisplaySize(290 + breathing * 18, 355 + breathing * 18).setAlpha(.48 + breathing * .13).setTint(glowColor);
-    this.syncHandFade();
+    if (this.grounded) this.halo.setPosition(this.sprite.x, this.sprite.y).setDisplaySize(290 + breathing * 18, 355 + breathing * 18).setAlpha(.48 + breathing * .13).setTint(glowColor);
+    this.syncFootFade();
   }
 
-  private followHeldHand() {
-    // Reference pose: back of glove faces the player, thumb left, fingers wrap right.
-    const scale = this.sprite.scaleY / this.baseScale;
-    const angle = this.sprite.rotation;
-    this.hand.setPosition(this.sprite.x, this.sprite.y).setScale(this.handBaseScale * scale).setRotation(angle);
-    this.syncHandFade();
+  private placeReadyFoot() {
+    this.foot.setPosition(this.sprite.x - 128, TUNING.ballStartY + 110)
+      .setScale(this.footBaseScale).setRotation(0);
+    this.syncFootFade();
   }
 
-  private syncHandFade() {
-    this.handFade.setPosition(this.hand.x, this.hand.y)
-      .setDisplaySize(this.hand.displayWidth, this.hand.displayHeight)
-      .setRotation(this.hand.rotation);
+  private syncFootFade() {
+    this.footFade.setPosition(this.foot.x, this.foot.y)
+      .setDisplaySize(this.foot.displayWidth, this.foot.displayHeight)
+      .setRotation(this.foot.rotation);
   }
 
-  throw(targetX: number, options: FlightOptions, complete: () => void, onRelease: () => void) {
-    this.phase = 'windup'; this.held = true;
+  kick(targetX: number, options: FlightOptions, complete: () => void, onContact: () => void) {
+    this.phase = 'windup'; this.grounded = true;
     const x = this.sprite.x, y = this.sprite.y;
+    this.foot.setPosition(x - 220, y + 175).setScale(this.footBaseScale)
+      .setRotation(-.13).setAlpha(0).setVisible(true);
+    this.syncFootFade();
     this.scene.tweens.add({
-      targets: this.sprite, x: x - 35, y: y + 22, rotation: -.12,
-      scaleX: this.baseScale * 1.035, scaleY: this.baseScale * 1.035,
-      duration: TUNING.throwWindupDuration, ease: 'Sine.Out',
-      onUpdate: () => this.followHeldHand(),
+      targets: this.foot, x: x - 172, y: y + 143, rotation: -.10, alpha: 1,
+      duration: TUNING.kickWindupDuration, ease: 'Sine.Out',
+      onUpdate: () => this.syncFootFade(),
       onComplete: () => {
-        this.phase = 'release';
+        this.phase = 'contact';
         this.scene.tweens.add({
-          targets: this.sprite, x: x + 32, y: y - 105, rotation: .18,
-          scaleX: this.baseScale * .9, scaleY: this.baseScale * .9,
-          duration: TUNING.throwReleaseDuration, ease: 'Quad.In',
-          onUpdate: () => this.followHeldHand(),
+          targets: this.foot, x: x - 48, y: y + 48, rotation: -.08,
+          duration: TUNING.kickSwingDuration, ease: 'Quad.In',
+          onUpdate: () => this.syncFootFade(),
           onComplete: () => {
-            this.held = false; this.phase = 'flight';
-            const release = { ...options, startX: this.sprite.x, startY: this.sprite.y,
-              startScale: this.sprite.scaleY / this.baseScale, startRotation: this.sprite.rotation };
-            onRelease(); this.fly(targetX, release, complete);
-            // The hand follows through briefly, then retreats towards the player.
+            this.grounded = false; this.phase = 'flight';
+            const launch = { ...options, startX: x, startY: y,
+              startScale: this.sprite.scaleY / this.baseScale, startRotation: 0 };
+            onContact(); this.fly(targetX, launch, complete);
+            this.scene.tweens.add({ targets: this.shadow, alpha: 0, duration: 100 });
+            // Only the foot follows through; the ball has already launched.
             this.scene.tweens.add({
-              targets: this.hand, x: this.hand.x + 35, y: this.hand.y - 40,
-              rotation: .28, scaleX: this.handBaseScale * .8, scaleY: this.handBaseScale * .8,
-              duration: 100, ease: 'Sine.Out',
+              targets: this.foot, x: x + 4, y: y - 42, rotation: -.23,
+              duration: 100, ease: 'Sine.Out', onUpdate: () => this.syncFootFade(),
               onComplete: () => this.scene.tweens.add({
-                targets: this.hand, x: x - 260, y: TUNING.ballStartY + 150,
-                rotation: -.12, alpha: 0, duration: 150, ease: 'Sine.In',
+                targets: this.foot, x: x - 245, y: y + 125,
+                rotation: -.06, alpha: 0, duration: 170, onComplete: () => this.foot.setVisible(false), ease: 'Sine.In',
+                onUpdate: () => this.syncFootFade(),
               }),
             });
           },
         });
       },
     });
-    this.scene.tweens.add({ targets: this.shadow, alpha: 0, duration: TUNING.throwWindupDuration });
   }
 
   private fly(targetX: number, options: FlightOptions, complete: () => void) {
@@ -160,13 +156,11 @@ export class BallController {
   }
 
   prepare(startX = TUNING.ballStartX as number, transitionDuration = 0) {
-    this.scene.tweens.killTweensOf([this.sprite, this.hand, this.shadow, this.trail, this.halo, this.progress]);
+    this.scene.tweens.killTweensOf([this.sprite, this.foot, this.shadow, this.trail, this.halo, this.progress]);
     this.reset();
     this.startX = startX;
     if (transitionDuration) {
-      this.hand.setAlpha(0);
-      this.scene.tweens.add({ targets: this.hand, alpha: 1, duration: transitionDuration });
-      this.scene.tweens.add({ targets: [this.sprite, this.shadow, this.halo], x: startX, duration: transitionDuration, ease: 'Sine.InOut', onUpdate: () => this.followHeldHand() });
+      this.scene.tweens.add({ targets: [this.sprite, this.shadow, this.halo], x: startX, duration: transitionDuration, ease: 'Sine.InOut', onUpdate: () => { this.foot.setVisible(false); this.placeReadyFoot(); } });
     }
     else { this.sprite.setX(startX); this.shadow.setX(startX); this.halo.setX(startX); }
     this.updateLighting(0, true, false);
@@ -198,9 +192,9 @@ export class BallController {
   }
 
   destroy() {
-    this.scene.tweens.killTweensOf([this.sprite, this.hand, this.shadow, this.trail, this.halo, this.progress]);
-    this.hand.clearMask(true); this.handFade.destroy();
-    this.sprite.destroy(); this.hand.destroy(); this.trail.destroy(); this.halo.destroy(); this.shadow.destroy();
+    this.scene.tweens.killTweensOf([this.sprite, this.foot, this.shadow, this.trail, this.halo, this.progress]);
+    this.foot.clearMask(true); this.footFade.destroy();
+    this.sprite.destroy(); this.foot.destroy(); this.trail.destroy(); this.halo.destroy(); this.shadow.destroy();
     this.groundLight.destroy(); this.rim.destroy();
   }
 }

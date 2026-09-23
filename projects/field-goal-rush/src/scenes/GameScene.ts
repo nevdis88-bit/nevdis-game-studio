@@ -55,7 +55,7 @@ export class GameScene extends Phaser.Scene {
   preload() {
     this.load.image('stadium', ASSETS.stadium);
     this.load.image('football', ASSETS.football);
-    this.load.image('throwing-hand', ASSETS.throwingHand);
+    this.load.image('kicking-foot', ASSETS.kickingFoot);
     this.load.image('goal', ASSETS.goal);
     this.load.image('coin', ASSETS.coin);
     this.load.image('heart', ASSETS.heart);
@@ -109,7 +109,7 @@ export class GameScene extends Phaser.Scene {
     this.game.events.on(Phaser.Core.Events.HIDDEN, this.onBlur, this);
     this.game.events.on(Phaser.Core.Events.FOCUS, this.onFocus, this);
     this.game.events.on(Phaser.Core.Events.VISIBLE, this.onFocus, this);
-    this.game.canvas.setAttribute('aria-label', 'Field Goal Rush. Goal position and shot type change after a goal. Every third challenge has a narrower goal. Throw with a tap or press space when the landing marker lines up with the goal.');
+    this.game.canvas.setAttribute('aria-label', 'Field Goal Rush. Goal position and shot type change after a goal. Every third challenge has a narrower goal. Kick with a tap or press space when the landing marker lines up with the goal.');
     this.game.canvas.setAttribute('tabindex', '0');
     this.announce('30 seconds. Tap when the marker is inside the goal.');
     this.drawAim();
@@ -187,7 +187,7 @@ export class GameScene extends Phaser.Scene {
   private refreshClock() {
     this.hooks.hud(this.run.score, Math.ceil(this.clock.remainingMs / 1000), this.run.lives);
     if (import.meta.env.DEV) {
-      Object.assign(this.game.canvas.dataset, { state: this.state, paused: String(this.paused), animationsPaused: String(this.tweens.paused), throwPhase: this.ball?.phase ?? 'held' });
+      Object.assign(this.game.canvas.dataset, { state: this.state, paused: String(this.paused), animationsPaused: String(this.tweens.paused), kickPhase: this.ball?.phase ?? 'ready', footVisible: String(!!this.ball?.foot.visible && this.ball.foot.alpha > .01), ballY: String(this.ball?.sprite.y ?? 0) });
     }
   }
 
@@ -196,9 +196,9 @@ export class GameScene extends Phaser.Scene {
     // Offset transparent padding so the visible icon-and-label row stays centered.
     const hand = this.add.image(-23, -46, 'tap-hand').setOrigin(0).setDisplaySize(90, 103);
     const labelX = 84.4 - 23 + 20;
-    const label = this.text(labelX, 0, 'TAP TO THROW', 38).setOrigin(0, .5).setLetterSpacing(.5).setShadow(0, 3, '#001711', 8, true, true);
+    const label = this.text(labelX, 0, 'TAP TO KICK', 38).setOrigin(0, .5).setLetterSpacing(.5).setShadow(0, 3, '#001711', 8, true, true);
     const promptWidth = labelX + label.width;
-    this.startPrompt = this.add.container((DESIGN_WIDTH - promptWidth) / 2, 1525, [hand, label]).setDepth(14);
+    this.startPrompt = this.add.container((DESIGN_WIDTH - promptWidth) / 2, 1580, [hand, label]).setDepth(14);
     this.tweens.add({ targets: this.startPrompt, alpha: .86, duration: 820, ease: 'Sine.InOut', yoyo: true, repeat: -1 });
   }
 
@@ -318,8 +318,8 @@ export class GameScene extends Phaser.Scene {
     this.finalTargetX = this.lockedAimX + this.lockedRound.windOffset;
     this.refreshHud();
     this.tweens.add({ targets: [this.aim, this.marker], alpha: 0, duration: 90 });
-    this.ball.throw(this.lockedAimX, this.lockedRound, () => this.resolveKick(), () => {
-      this.effects.throwRelease(this.ball.sprite.x, this.ball.sprite.y);
+    this.ball.kick(this.lockedAimX, this.lockedRound, () => this.resolveKick(), () => {
+      this.effects.kickContact(this.ball.sprite.x, this.ball.sprite.y);
       if (this.haptics) navigator.vibrate?.(18);
     });
   }

@@ -237,13 +237,13 @@ test('timeout is distinct from depleted lives; the last missed buzzer shot prior
 });
 
 
-test('throw flight starts at the hand release point without jumping and keeps the locked landing', () => {
+test('kick flight starts at the planted ball and keeps the locked landing', () => {
   const out = {x:0,y:0,scale:0,rotation:0};
-  const release = {startX:352,startY:1215,startScale:.9,startRotation:-.23,targetY:580,endScale:.24,windOffset:19};
+  const release = {startX:352,startY:TUNING.ballStartY,startScale:1,startRotation:0,targetY:580,endScale:.24,windOffset:19};
   flightPose(0,410,out,release);
-  assert.deepEqual(out,{x:352,y:1215,scale:.9,rotation:-.23});
+  assert.deepEqual(out,{x:352,y:TUNING.ballStartY,scale:1,rotation:0});
   flightPose(1,410,out,release);
   assert.equal(out.x,429); assert.equal(out.y,580);
   assert.ok(Math.abs(out.scale-.24)<1e-9);
-  assert.equal(out.rotation,-.23+TUNING.ballSpin);
+  assert.equal(out.rotation,TUNING.ballSpin);
 });

@@ -107,13 +107,13 @@ export class Effects {
     }
   }
 
-  throwRelease(x: number, y: number) {
+  kickContact(x: number, y: number) {
     this.ring.setPosition(x, y).setScale(.35, .7).setAlpha(1).setVisible(true);
     this.scene.tweens.add({ targets: this.ring, scaleX: 1.1, scaleY: .35, alpha: 0, duration: 180 });
     this.particles.setParticleTint([0xb8ff1a, 0x50c943, 0xffffff]);
     this.particles.explode(6, x, y + 45);
     this.scene.cameras.main.shake(TUNING.screenShakeDuration, .001);
-    this.tone(260, .1, 0, 880);
+    this.tone(180, .11, 0, 60, 'triangle', .18);
   }
 
   show(result: KickResult, x: number, y: number, streak: number, multiplier = 1, goalStreak = streak, reward = 0) {

@@ -264,9 +264,9 @@ export class ActivityUI {
   }
   private addDemoTools() {
     const pane=document.querySelector<HTMLElement>('#demo-tools')!;pane.hidden=false;
-    pane.innerHTML=`<span class="demo-tag">LOCAL PREVIEW</span><h2>试玩工具</h2><p>活动界面使用真实状态。广告和邀请通过下方工具模拟，尚未接入正式平台。</p><button data-demo="sample">Figma 示例：首页 70/100</button><button data-demo="fresh">新用户 · 3 次机会</button><button data-demo="empty">机会用完</button><button data-demo="limit">广告额度用完</button><button data-demo="invite">模拟成功邀请 · +10 次</button><button data-demo="finish">结束本局</button>${import.meta.env.DEV && new URLSearchParams(location.search).get('qa') === '1' ? '<button data-demo="qa-hit">测试命中一球</button><button data-demo="qa-miss">测试射失一球</button><button data-demo="qa-throw">慢动作投掷（测试）</button>' : ''}<button data-demo="result">Figma 示例：结算 +500</button><button data-demo="bonus">达到每日目标</button><small>试玩参数：100 达标 / 80 奖励<br>广告 15 秒 · UTC 每日刷新</small>`;
+    pane.innerHTML=`<span class="demo-tag">LOCAL PREVIEW</span><h2>试玩工具</h2><p>活动界面使用真实状态。广告和邀请通过下方工具模拟，尚未接入正式平台。</p><button data-demo="sample">Figma 示例：首页 70/100</button><button data-demo="fresh">新用户 · 3 次机会</button><button data-demo="empty">机会用完</button><button data-demo="limit">广告额度用完</button><button data-demo="invite">模拟成功邀请 · +10 次</button><button data-demo="finish">结束本局</button>${import.meta.env.DEV && new URLSearchParams(location.search).get('qa') === '1' ? '<button data-demo="qa-hit">测试命中一球</button><button data-demo="qa-miss">测试射失一球</button><button data-demo="qa-kick">慢动作踢球（测试）</button>' : ''}<button data-demo="result">Figma 示例：结算 +500</button><button data-demo="bonus">达到每日目标</button><small>试玩参数：100 达标 / 80 奖励<br>广告 15 秒 · UTC 每日刷新</small>`;
     pane.addEventListener('click',e=>{const action=(e.target as HTMLElement).dataset.demo;if(!action||this.busy)return;
-      if(action==='qa-throw'){this.scene.qaKick(false,true);return;}
+      if(action==='qa-kick'){this.scene.qaKick(false,true);return;}
       if(action==='qa-hit'||action==='qa-miss'){this.scene.qaKick(action==='qa-miss');return;}
       if(action==='finish'){if(this.roundId){this.scene.clock.remainingMs=0;this.scene.resumePlay();this.closeModal();}return;}
       if(action==='invite'){this.store.grantInvite('demo-invite:'+crypto.randomUUID());this.toast('+10 plays received');if(this.page==='home')this.renderHome();return;}
