@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>多点取色背景图mock工具</title><meta name="description" content="从图像边缘的 12 个采样点生成柔雾背景，预览真实取色，导出 940 × 668 PNG。"><link rel="stylesheet" href="style.css"></head>
+<body>
+<header><a class="brand" href="./"><span class="brandmark" aria-hidden="true">⠿</span><b>多点取色</b><span class="brand-en">MOCK TOOL</span></a><div class="header-actions"><button id="rulesBtn" class="quiet">规则说明 <span>↗</span></button><button id="exportTop" class="primary" title="仅导出背景图，不包含原图内容或取色点">↓ 导出 PNG</button></div></header>
+<main><div class="intro"><div><div class="eyebrow">12-POINT EDGE SAMPLING</div><h1>多点取色背景图mock工具</h1><p>上传图片，自动提取边缘颜色，生成柔雾背景。</p></div><span class="local-tag"><i></i> 图片仅在浏览器内处理</span></div>
+<div class="app">
+<aside>
+<section><h2><span class="step">01</span> 选择图片 <button class="text-btn" id="demoBtn">试用示例</button></h2>
+<label id="dropzone" class="upload" tabindex="0"><input id="file" type="file" accept="image/png,image/jpeg,image/webp,image/avif,image/bmp"><span class="upload-icon">↑</span><strong>点击上传，或拖入图片</strong><span>PNG、JPG、WebP · 也可粘贴图片</span></label>
+<div class="file-info"><span id="fileName">正在加载示例…</span><small id="fileSize"></small></div>
+<label class="field-label" for="mode">处理方式</label><select id="mode"><option value="expand">素材扩展 · 原图居中，填充留白</option><option value="replace">已有黑边 · 保留原有页面布局</option></select>
+<p class="hint" id="modeHint">自动识别黑边；也可手动选择处理方式。</p>
+<details id="rectDetails"><summary>校准媒体边界 <span>可选</span></summary><p class="hint">只框选媒体内容，避免把黑边作为取色来源。数值单位为原图像素。</p><div class="rect-grid"><label>X<input id="rx" type="number" min="0"></label><label>Y<input id="ry" type="number" min="0"></label><label>宽<input id="rw" type="number" min="1"></label><label>高<input id="rh" type="number" min="1"></label></div><button id="detectBtn" class="secondary full">重新识别黑边</button></details>
+</section>
+<section><h2><span class="step">02</span> 输出尺寸 <span class="badge">PX</span></h2><div class="size-row"><label>宽度<input id="width" type="number" value="940" min="64" max="4096"></label><span>×</span><label>高度<input id="height" type="number" value="668" min="64" max="4096"></label></div><div class="presets"><button data-size="940,668" class="selected">940 × 668</button><button data-size="1920,1080">16 : 9</button><button data-size="1080,1920">9 : 16</button><button data-size="1080,1080">1 : 1</button></div><p class="hint">原图等比适配，主体不会拉伸。</p></section>
+<section><h2><span class="step">03</span> 自动取色 <span class="badge">已固定</span></h2>
+<p class="auto-copy">自动识别横竖方向，使用固定参数生成柔雾背景。上传即可，无需调节。</p>
+<details><summary>查看固定参数</summary><dl class="fixed-params"><div><dt>柔雾扩散</dt><dd>24%</dd></div><div><dt>亮度 L</dt><dd>0.28–0.50</dd></div><div><dt>色度上限 C</dt><dd>0.12</dd></div><div><dt>沿边端点内缩</dt><dd>2%</dd></div><div><dt>取色点向内偏移</dt><dd>2 px</dd></div><div><dt>单点取样范围</dt><dd>1 × 1 px</dd></div></dl></details>
+</section></aside>
+<div class="workspace"><div class="toolbar"><div class="tabs" role="tablist" aria-label="预览模式"><button role="tab" aria-selected="true" data-view="result" class="active">合成效果</button><button role="tab" aria-selected="false" data-view="background">仅背景</button><button role="tab" aria-selected="false" data-view="original">原始黑边</button></div><label class="toggle"><input id="showPoints" type="checkbox" checked>显示取色点</label></div>
+<div class="stage" id="stage"><div class="canvas-wrap"><canvas id="preview" aria-label="图片预览与 12 个取色点"></canvas></div><div class="stage-caption"><span id="dimensions">940 × 668 PX</span><span>原图与取色点仅用于预览，导出仅包含背景</span></div></div>
+<div class="result-bar"><span class="status"><i></i><span id="renderStatus" role="status">正在准备</span></span><span class="export-note">PNG 仅导出纯背景</span></div>
+<div class="palette-panel"><div class="palette-head"><div><h2>12 个颜色，来自原图边缘</h2><p id="samplingHint">左右各 6 个采样点 · 上：原始色，下：约束后</p></div><button id="jsonBtn" class="quiet small">导出取色数据 ↗</button></div><div class="palette" id="palette"></div></div>
+<div class="method-line"><span>01 边缘采样</span><b>→</b><span>02 OKLCH 约束</span><b>→</b><span>03 色团平滑混合</span><b>→</b><span>04 叠加原图</span></div>
+</div></div><footer>多点取色背景图mock工具 <span>静态图片生成时取色，无需 1 Hz 轮询。</span></footer></main>
+<div id="toast" role="status"></div>
+<dialog id="rules"><button id="closeRules" class="dialog-close" aria-label="关闭说明">×</button><div class="eyebrow">透明、可检查的生成过程</div><h2>哪些是原规则，哪些是实现参数？</h2><h3>按参考截图落实</h3><ul><li>竖版媒体：左缘 6 点 + 右缘 6 点。</li><li>横版媒体：上缘 6 点 + 下缘 6 点。</li><li>从真实像素取色，经 OKLCH 亮度 / 色度约束后生成柔雾色团。</li><li>主体等比显示，颜色只填充留白。1 Hz 是视频取色频率，静态图在上传或重新生成时计算。</li></ul><h3>本工具使用的固定参数</h3><p>L 限制为 0.28–0.50，C 上限 0.12；沿边采样位置为 2%、21.2%、40.4%、59.6%、78.8%、98%，向媒体内部偏移 2 px，避开边界抗锯齿。每点采样 1 × 1 px。</p><p>12 个颜色按空间距离做高斯加权，在 OKLab 中平滑混合。沿边扩散固定 24%，跨边扩散 42%。色域外颜色先保持亮度与色相、降低色度。背景在最长 640 px 的网格计算后平滑放大至输出尺寸。</p><p>“已有黑边”模式中，选区内像素保留，选区外以黑底合成方式保留文字图标。它适用于黑底留白；非黑色背景请用“素材扩展”。</p><div class="note">这是可复现的规则实现。参考未提供完整 Shader 和数值，因此无法保证与原 Demo 逐像素一致。没有使用 AI 生成，也没有放大模糊原图。</div><p class="source-link">颜色空间说明：<a href="https://www.w3.org/TR/css-color-4/#ok-lab" target="_blank" rel="noreferrer">W3C CSS Color 4 ↗</a></p></dialog>
+<script type="module" src="app.js"></script></body></html>
